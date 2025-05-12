@@ -1,0 +1,21 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Resources:
+  HitPredictorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: mlb_hit_predictor.lambda_handler
+      Runtime: python3.9
+      CodeUri: .
+      MemorySize: 512
+      Timeout: 30
+      Policies: AWSLambdaBasicExecutionRole
+      Environment:
+        Variables:
+          STAGE: production
+      Events:
+        HitPredictorApi:
+          Type: Api
+          Properties:
+            Path: /predict
+            Method: post

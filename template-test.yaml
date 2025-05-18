@@ -1,21 +1,47 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Transform: AWS::Serverless-2016-10-31
+Description: MLB Hit Predictor Lambda Deployment - Test
+
+Parameters:
+  Environment:
+    Type: String
+    Default: "test"
+    AllowedValues:
+      - prod
+      - test
+
 Resources:
-  HitPredictorFunction:
-    Type: AWS::Serverless::Function
+  PredictorLambdaRole:
+    Type: AWS::IAM::Role
     Properties:
-      Handler: mlb_hit_predictor.lambda_handler
-      Runtime: python3.9
-      CodeUri: .
-      MemorySize: 512
+      RoleName: !Sub "mlb-hit-predictor-role-${Environment}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: "LambdaBasicExecution"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: "*"
+
+  PredictorFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "mlb-hit-predictor-${Environment}"
+      Handler: mlb_hit_predictor_test.lambda_handler
+      Runtime: python3.11
+      Role: !GetAtt PredictorLambdaRole.Arn
+      Code:
+        S3Bucket: !Sub "mlb-hit-predictor-code-${Environment}"
+        S3Key: "mlb_hit_predictor_test.zip"
       Timeout: 30
-      Policies: AWSLambdaBasicExecutionRole
-      Environment:
-        Variables:
-          STAGE: production
-      Events:
-        HitPredictorApi:
-          Type: Api
-          Properties:
-            Path: /predict
-            Method: post
+      MemorySize: 256

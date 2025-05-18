@@ -1,33 +1,30 @@
-name: Deploy to AWS Lambda
+name: Deploy to Test
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - test
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: test
+
     steps:
-      - name: Checkout repo
+      - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
         with:
-          python-version: '3.9'
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
 
-      - name: Install dependencies
+      - name: Deploy CloudFormation Stack
         run: |
-          pip install aws-sam-cli
-
-      - name: Build with SAM
-        run: |
-          sam build
-
-      - name: Deploy using SAM
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: us-east-1
-        run: |
-          sam deploy --no-confirm-changeset --no-fail-on-empty-changeset --stack-name hit-predictor --capabilities CAPABILITY_IAM
+          aws cloudformation deploy \
+            --template-file template-test.yaml \
+            --stack-name mlb-hit-predictor-test \
+            --parameter-overrides Environment=test \
+            --capabilities CAPABILITY_IAM

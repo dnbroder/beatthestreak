@@ -1,47 +1,130 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: MLB Hit Predictor Lambda Deployment - Production
-
 Parameters:
   Environment:
     Type: String
-    Default: "prod"
+    Default: "production"
     AllowedValues:
-      - prod
+      - production
       - test
-
+  PythonRuntime:
+    Type: String
+    Default: python3.13
+  GitHubOrg:
+    Type: String
+    Description: dnbroder
+  GitHubRepo:
+    Type: String
+    Description: BeatTheStreak
+  AWSAccountId:
+    Type: String
+    Description: 033896355668
 Resources:
-  PredictorLambdaRole:
+  PredictorFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "mlb-hit-predictor-${PRODUCTION}"
+      Handler: mlb_hit_predictor.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: !Ref PythonRuntime
+      Code:
+        S3Bucket: !Sub "mlb-hit-predictor-${PRODUCTION}-bucket"
+        S3Key: code.zip
+      Timeout: 30
+      MemorySize: 512
+  CICDRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub "mlb-hit-predictor-role-${Environment}"
+      RoleName: !Sub "mlb-cicd-role-${PRODUCTION}"
       AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: lambda.amazonaws.com
-            Action: sts:AssumeRole
+  Version: "2012-10-17"
+  Statement:
+    - Effect: Allow
+      Principal:
+        Federated: arn:aws:iam::${AWSAccountId}:oidc-provider/token.actions.githubusercontent.com
+      Action: sts:AssumeRoleWithWebIdentity
+      Condition:
+        StringLike:
+          token.actions.githubusercontent.com:sub: repo:${GitHubOrg}/${GitHubRepo}:ref:refs/heads/*
       Policies:
-        - PolicyName: "LambdaBasicExecution"
+        - PolicyName: CICDPermissions
           PolicyDocument:
-            Version: "2012-10-17"
+            Version: '2012-10-17'
             Statement:
-              - Effect: Allow
+              - Sid: CloudFormationAccess
+                Effect: Allow
+                Action:
+                  - cloudformation:CreateStack
+                  - cloudformation:UpdateStack
+                  - cloudformation:DeleteStack
+                  - cloudformation:DescribeStacks
+                Resource: '*'
+              - Sid: LambdaAccess
+                Effect: Allow
+                Action:
+                  - lambda:CreateFunction
+                  - lambda:UpdateFunctionCode
+                  - lambda:UpdateFunctionConfiguration
+                  - lambda:DeleteFunction
+                  - lambda:GetFunction
+                  - lambda:InvokeFunction
+                Resource: '*'
+              - Sid: LogsAccess
+                Effect: Allow
                 Action:
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                Resource: "*"
-
-  PredictorFunction:
-    Type: AWS::Lambda::Function
-    Properties:
-      FunctionName: !Sub "mlb-hit-predictor-${Environment}"
-      Handler: mlb_hit_predictor.lambda_handler
-      Runtime: python3.11
-      Role: !GetAtt PredictorLambdaRole.Arn
-      Code:
-        S3Bucket: !Sub "mlb-hit-predictor-code-${Environment}"
-        S3Key: "mlb_hit_predictor.zip"
-      Timeout: 30
-      MemorySize: 256
+                  - logs:DescribeLogStreams
+                Resource: '*'
+              - Sid: S3Access
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub "arn:aws:s3:::mlb-hit-predictor-${PRODUCTION}-bucket"
+                  - !Sub "arn:aws:s3:::mlb-hit-predictor-${PRODUCTION}-bucket/*"
+              - Sid: IAMPassRole
+                Effect: Allow
+                Action: iam:PassRole
+                Resource: !Sub "arn:aws:iam::${AWS::AccountId}:role/mlb-lambda-execution-role"
+  LambdaExecutionRole:
+        Type: AWS::IAM::Role
+        Properties:
+          RoleName: !Sub "mlb-lambda-execution-role-${PRODUCTION}"
+          AssumeRolePolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Principal:
+                  Service: lambda.amazonaws.com
+                Action: sts:AssumeRole
+          Policies:
+            - PolicyName: LambdaExecutionPolicy
+              PolicyDocument:
+                Version: '2012-10-17'
+                Statement:
+                  - Sid: CloudWatchLogs
+                    Effect: Allow
+                    Action:
+                      - logs:CreateLogGroup
+                      - logs:CreateLogStream
+                      - logs:PutLogEvents
+                    Resource: "*"
+                  - Sid: S3Access
+                    Effect: Allow
+                    Action:
+                      - s3:GetObject
+                      - s3:PutObject
+                      - s3:ListBucket
+                    Resource:
+                      - !Sub "arn:aws:s3:::mlb-hit-predictor-${PRODUCTION}-bucket"
+                      - !Sub "arn:aws:s3:::mlb-hit-predictor-${PRODUCTION}-bucket/*"
+                  - Sid: AllowBasicLambda
+                    Effect: Allow
+                    Action:
+                      - lambda:GetFunction
+                      - lambda:InvokeFunction
+                    Resource: "*"

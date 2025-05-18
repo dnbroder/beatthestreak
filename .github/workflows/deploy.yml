@@ -1,4 +1,4 @@
-name: Deploy to Production
+name: Deploy to Production (main branch)
 
 on:
   push:
@@ -8,23 +8,28 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: production
+    permissions:
+      id-token: write
+      contents: read
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v2
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/mlb-cicd-role
+          role-session-name: github-cicd-session
           aws-region: us-east-1
 
-      - name: Deploy CloudFormation Stack
-        run: |
-          aws cloudformation deploy \
-            --template-file template.yaml \
-            --stack-name mlb-hit-predictor-prod \
-            --parameter-overrides Environment=prod \
-            --capabilities CAPABILITY_IAM
+      - name: Deploy CloudFormation stack
+        uses: aws-actions/aws-cloudformation-github-deploy@v1
+        with:
+          name: mlb-hit-predictor
+          template: template.yaml
+          parameter-overrides: |
+            GitHubOrg=${{ github.repository_owner }}
+            GitHubRepo=${{ github.event.repository.name }}
+            AWSAccountId=${{ secrets.AWS_ACCOUNT_ID }}
+          capabilities: CAPABILITY_NAMED_IAM

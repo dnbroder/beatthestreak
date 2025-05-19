@@ -33,3 +33,8 @@ jobs:
             GitHubRepo=${{ github.event.repository.name }}
             AWSAccountId=${{ secrets.AWS_ACCOUNT_ID }}
           capabilities: CAPABILITY_NAMED_IAM
+          no-execute-changeset: false
+          no-delete-failed-changeset: false
+          no-fail-on-empty-changeset: false
+          disable-rollback: false
+          termination-protection: false

@@ -19,7 +19,7 @@ jobs:
       - name: Configure AWS credentials (assume role via OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::033896355668:role/mlb-cicd-role-production
+          role-to-assume: arn:aws:iam::033896355668:role/mlb-cicd-role
           aws-region: us-east-1
 
       - name: Deploy CloudFormation Stack

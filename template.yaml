@@ -11,6 +11,11 @@ Parameters:
     Type: String
     Default: python3.13
 Resources:
+  DeploymentBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "mlb-hit-predictor-${Environment}-bucket"
+
   PredictorFunction:
     Type: AWS::Lambda::Function
     Properties:
@@ -19,7 +24,7 @@ Resources:
       Role: !GetAtt LambdaExecutionRole.Arn
       Runtime: !Ref PythonRuntime
       Code:
-        S3Bucket: !Sub "mlb-hit-predictor-${Environment}-bucket"
+        S3Bucket: !Ref DeploymentBucket
         S3Key: code.zip
       Timeout: 30
       MemorySize: 512

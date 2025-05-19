@@ -23,16 +23,12 @@ jobs:
           role-session-name: github-cicd-session
           aws-region: us-east-1
 
-      - name: Deploy CloudFormation stack
+      - name: Deploy CloudFormation Stack
         uses: aws-actions/aws-cloudformation-github-deploy@v1
         with:
           name: mlb-hit-predictor
           template: template.yaml
-          parameter-overrides: |
-            GitHubOrg=dnbroder
-            GitHubRepo=BeatTheStreak
-            AWSAccountId=033896355668
-            Environment=production
+          parameter-overrides: GitHubOrg=dnbroder GitHubRepo=BeatTheStreak AWSAccountId=033896355668 Environment=production
           capabilities: CAPABILITY_NAMED_IAM
           no-execute-changeset: false
           no-delete-failed-changeset: false
@@ -42,3 +38,6 @@ jobs:
         env:
           AWS_DEFAULT_REGION: us-east-1
           AWS_REGION: us-east-1
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}

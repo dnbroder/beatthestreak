@@ -35,7 +35,6 @@ Resources:
         S3Key: code.zip
       Timeout: 30
       MemorySize: 512
-
   CICDRole:
     Type: AWS::IAM::Role
     Properties:
@@ -94,11 +93,10 @@ Resources:
                 Effect: Allow
                 Action: iam:PassRole
                 Resource: !Sub "arn:aws:iam::${AWS::AccountId}:role/mlb-lambda-execution-role"
-
   LambdaExecutionRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub "mlb-lambda-execution-role-${Environment}"
+      RoleName: !Sub "mlb-lambda-execution-role"
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:

@@ -39,7 +39,7 @@ Resources:
   CICDRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub "mlb-cicd-role-${Environment}"
+      RoleName: mlb-cicd-role
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -93,7 +93,7 @@ Resources:
               - Sid: IAMPassRole
                 Effect: Allow
                 Action: iam:PassRole
-                Resource: !Sub "arn:aws:iam::${AWS::AccountId}:role/mlb-lambda-execution-role-${Environment}"
+                Resource: !Sub "arn:aws:iam::${AWS::AccountId}:role/mlb-lambda-execution-role"
 
   LambdaExecutionRole:
     Type: AWS::IAM::Role

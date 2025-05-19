@@ -10,18 +10,6 @@ Parameters:
   PythonRuntime:
     Type: String
     Default: python3.13
-  GitHubOrg:
-    Type: String
-    Default: dnbroder
-    Description: GitHub organization name
-  GitHubRepo:
-    Type: String
-    Default: BeatTheStreak
-    Description: GitHub repository name
-  AWSAccountId:
-    Type: String
-    Default: 033896355668
-    Description: AWS account ID
 Resources:
   PredictorFunction:
     Type: AWS::Lambda::Function
@@ -35,68 +23,11 @@ Resources:
         S3Key: code.zip
       Timeout: 30
       MemorySize: 512
-  CICDRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: mlb-cicd-role
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Federated: !Sub "arn:aws:iam::${AWSAccountId}:oidc-provider/token.actions.githubusercontent.com"
-            Action: sts:AssumeRoleWithWebIdentity
-            Condition:
-              StringLike:
-                token.actions.githubusercontent.com:sub: !Sub "repo:${GitHubOrg}/${GitHubRepo}:ref:refs/heads/*"
-      Policies:
-        - PolicyName: CICDPermissions
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Sid: CloudFormationAccess
-                Effect: Allow
-                Action:
-                  - cloudformation:CreateStack
-                  - cloudformation:UpdateStack
-                  - cloudformation:DeleteStack
-                  - cloudformation:DescribeStacks
-                Resource: '*'
-              - Sid: LambdaAccess
-                Effect: Allow
-                Action:
-                  - lambda:CreateFunction
-                  - lambda:UpdateFunctionCode
-                  - lambda:UpdateFunctionConfiguration
-                  - lambda:DeleteFunction
-                  - lambda:GetFunction
-                  - lambda:InvokeFunction
-                Resource: '*'
-              - Sid: LogsAccess
-                Effect: Allow
-                Action:
-                  - logs:CreateLogGroup
-                  - logs:CreateLogStream
-                  - logs:PutLogEvents
-                  - logs:DescribeLogStreams
-                Resource: '*'
-              - Sid: S3Access
-                Effect: Allow
-                Action:
-                  - s3:GetObject
-                  - s3:PutObject
-                  - s3:ListBucket
-                Resource:
-                  - !Sub "arn:aws:s3:::mlb-hit-predictor-${Environment}-bucket"
-                  - !Sub "arn:aws:s3:::mlb-hit-predictor-${Environment}-bucket/*"
-              - Sid: IAMPassRole
-                Effect: Allow
-                Action: iam:PassRole
-                Resource: !Sub "arn:aws:iam::${AWS::AccountId}:role/mlb-lambda-execution-role"
+
   LambdaExecutionRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub "mlb-lambda-execution-role"
+      RoleName: !Sub "mlb-lambda-execution-role-${Environment}"
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:

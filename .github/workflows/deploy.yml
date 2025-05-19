@@ -31,7 +31,7 @@ jobs:
           parameter-overrides: |
             GitHubOrg=dnbroder
             GitHubRepo=BeatTheStreak
-            AWSAccountId=${{ secrets.AWS_ACCOUNT_ID }}
+            AWSAccountId=033896355668
             Environment=production
           capabilities: CAPABILITY_NAMED_IAM
           no-execute-changeset: false

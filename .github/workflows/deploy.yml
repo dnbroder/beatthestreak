@@ -29,12 +29,16 @@ jobs:
           name: mlb-hit-predictor
           template: template.yaml
           parameter-overrides: |
-            GitHubOrg=${{ github.repository_owner }}
-            GitHubRepo=${{ github.event.repository.name }}
+            GitHubOrg=dnbroder
+            GitHubRepo=BeatTheStreak
             AWSAccountId=${{ secrets.AWS_ACCOUNT_ID }}
+            Environment=production
           capabilities: CAPABILITY_NAMED_IAM
           no-execute-changeset: false
           no-delete-failed-changeset: false
           no-fail-on-empty-changeset: false
           disable-rollback: false
           termination-protection: false
+        env:
+          AWS_DEFAULT_REGION: us-east-1
+          AWS_REGION: us-east-1

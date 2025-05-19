@@ -27,7 +27,6 @@ jobs:
         with:
           name: mlb-hit-predictor
           template: template.yaml
-          parameter-overrides: GitHubOrg=dnbroder GitHubRepo=BeatTheStreak AWSAccountId=033896355668 Environment=production PythonRuntime=python3.13
           capabilities: CAPABILITY_NAMED_IAM
           no-execute-changeset: false
           no-delete-failed-changeset: false

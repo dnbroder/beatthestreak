@@ -12,13 +12,16 @@ Parameters:
     Default: python3.13
   GitHubOrg:
     Type: String
-    Description: dnbroder
+    Default: dnbroder
+    Description: GitHub organization name
   GitHubRepo:
     Type: String
-    Description: BeatTheStreak
+    Default: BeatTheStreak
+    Description: GitHub repository name
   AWSAccountId:
     Type: String
-    Description: 033896355668
+    Default: 033896355668
+    Description: AWS account ID
 Resources:
   PredictorFunction:
     Type: AWS::Lambda::Function

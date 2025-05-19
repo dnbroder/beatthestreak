@@ -1,4 +1,4 @@
-name: Deploy to Production (main branch)
+name: Deploy to AWS
 
 on:
   push:
@@ -16,11 +16,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Configure AWS credentials
+      - name: Configure AWS credentials (assume role via OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::033896355668:role/mlb-cicd-role
-          role-session-name: github-cicd-session
+          role-to-assume: arn:aws:iam::033896355668:role/mlb-cicd-role-production
           aws-region: us-east-1
 
       - name: Deploy CloudFormation Stack
@@ -35,9 +34,3 @@ jobs:
           no-fail-on-empty-changeset: false
           disable-rollback: false
           termination-protection: false
-        env:
-          AWS_DEFAULT_REGION: us-east-1
-          AWS_REGION: us-east-1
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}

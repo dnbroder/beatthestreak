@@ -44,7 +44,7 @@ jobs:
       - name: Deploy CloudFormation stack
         uses: aws-actions/aws-cloudformation-github-deploy@v1
         with:
-          name: mlb-hit-predictor
+          name: BeatTheStreak
           template: template.yaml
           parameter-overrides: >
             Environment=production

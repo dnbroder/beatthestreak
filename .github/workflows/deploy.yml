@@ -1,35 +1,52 @@
-name: Deploy to AWS
+name: Deploy MLB Hit Predictor
 
 on:
   push:
     branches:
       - main
 
+env:
+  AWS_REGION: us-east-1
+  S3_BUCKET: mlb-hit-predictor-production-bucket
+  S3_KEY: code.zip
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-      - name: Configure AWS credentials (assume role via OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Zip Lambda function code
+        run: |
+          zip -r code.zip BeatTheStreak
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
         with:
           role-to-assume: arn:aws:iam::033896355668:role/mlb-cicd-role
-          aws-region: us-east-1
+          role-session-name: GitHubActions
+          aws-region: ${{ env.AWS_REGION }}
 
-      - name: Deploy CloudFormation Stack
+      - name: Upload ZIP to S3
+        run: |
+          aws s3 cp code.zip s3://${{ env.S3_BUCKET }}/${{ env.S3_KEY }}
+
+      - name: Deploy CloudFormation stack
         uses: aws-actions/aws-cloudformation-github-deploy@v1
         with:
           name: mlb-hit-predictor
           template: template.yaml
+          parameter-overrides: >
+            Environment=production
+            PythonRuntime=python3.13
           capabilities: CAPABILITY_NAMED_IAM
-          no-execute-changeset: false
-          no-delete-failed-changeset: false
-          no-fail-on-empty-changeset: false
-          disable-rollback: false
-          termination-protection: false

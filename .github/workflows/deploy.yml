@@ -28,7 +28,7 @@ jobs:
 
       - name: Zip Lambda function code
         run: |
-          zip -r code.zip BeatTheStreak
+          zip -r code.zip . -x '*.git*' '*.github*' '*tests*'
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2

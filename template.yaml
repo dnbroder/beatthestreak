@@ -11,11 +11,6 @@ Parameters:
     Type: String
     Default: python3.11
 Resources:
-  DeploymentBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: !Sub "mlb-hit-predictor-${Environment}-bucket"
-
   PredictorFunction:
     Type: AWS::Lambda::Function
     Properties:

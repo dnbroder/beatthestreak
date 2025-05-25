@@ -1,47 +1,62 @@
-name: Deploy MLB Hit Predictor
+name: Deploy MLB Hit Predictor to AWS
 
 on:
   push:
     branches:
       - main
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   deploy:
+    name: Build and Deploy Lambda
     runs-on: ubuntu-latest
 
+    env:
+      S3_BUCKET: mlb-hit-predictor-production-bucket
+      S3_KEY: code.zip
+      ENVIRONMENT: production
+      PYTHON_RUNTIME: python3.13
+      REGION: us-east-1
+
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
+          python-version: 3.13
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
-
-      - name: Zip Lambda function code
         run: |
-          zip -r code.zip . -x '*.git*' '*.github*' '*tests*'
+          pip install -r requirements.txt -t mlb_hit_predictor/
+      
+      - name: Zip Lambda package
+        run: |
+          cd mlb_hit_predictor
+          zip -r ../code.zip .
+          cd ..
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
           role-to-assume: arn:aws:iam::033896355668:role/mlb-cicd-role
           role-session-name: GitHubActions
-          aws-region: us-east-1
+          aws-region: ${{ env.REGION }}
 
-      - name: Upload ZIP to S3
+      - name: Upload to S3
         run: |
           aws s3 cp code.zip s3://${{ env.S3_BUCKET }}/${{ env.S3_KEY }}
 
-      - name: Deploy CloudFormation stack
-        uses: aws-actions/aws-cloudformation-github-deploy@v1
-        with:
-          name: mlb-hit-predictor
-          template: template.yaml
-          parameter-overrides: >
-            Environment=production
-            PythonRuntime=python3.13
-          capabilities: CAPABILITY_NAMED_IAM
+      - name: Deploy CloudFormation Stack
+        run: |
+          aws cloudformation deploy \
+            --template-file template.yaml \
+            --stack-name BeatTheStreak \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --parameter-overrides \
+              Environment=${{ env.ENVIRONMENT }} \
+              PythonRuntime=${{ env.PYTHON_RUNTIME }}

@@ -10,6 +10,9 @@ Parameters:
   PythonRuntime:
     Type: String
     Default: python3.11
+  DeploymentBucket:
+    Type: String
+    Default: mlb-hit-predictor-production-bucket
 Resources:
   PredictorFunction:
     Type: AWS::Lambda::Function

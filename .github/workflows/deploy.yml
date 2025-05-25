@@ -32,11 +32,11 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install -r requirements.txt -t mlb_hit_predictor/
+          pip install -r requirements.txt -t BeatTheStreak/
       
       - name: Zip Lambda package
         run: |
-          cd mlb_hit_predictor
+          cd BeatTheStreak
           zip -r ../code.zip .
           cd ..
 

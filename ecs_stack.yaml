@@ -7,7 +7,7 @@ Parameters:
     Default: production
   ImageUrl:
     Type: String
-    Description: URI of the container image in ECR
+    Default: 033896355668.dkr.ecr.us-east-1.amazonaws.com/beatthestreak:latest
   ContainerPort:
     Type: Number
     Default: 80

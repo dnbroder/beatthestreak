@@ -6,4 +6,4 @@ Documentation to come soon :)
 
 CICD Role (mlb-cicd-role) must be deployed prior to running any deployment of CloudFormation resources. IAM policy for this role can be found here:
 
-donovan
+Donovan

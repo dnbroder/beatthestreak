@@ -1,6 +1,3 @@
-xgboost
+fastapi
 pandas
-numpy
-scikit-learn
-joblib
-requests
+uvicorn

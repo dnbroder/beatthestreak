@@ -1,62 +1,43 @@
-name: Deploy MLB Hit Predictor to AWS
+name: Deploy to AWS ECS
 
 on:
   push:
     branches:
       - main
 
-permissions:
-  id-token: write
-  contents: read
-
 jobs:
   deploy:
-    name: Build and Deploy Lambda
     runs-on: ubuntu-latest
-
-    env:
-      S3_BUCKET: mlb-hit-predictor-production-bucket
-      S3_KEY: code.zip
-      ENVIRONMENT: production
-      PYTHON_RUNTIME: python3.13
-      REGION: us-east-1
+    permissions:
+      id-token: write
+      contents: read
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: 3.13
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        role-to-assume: arn:aws:iam::033896355668:role/mlb-cicd-role
+        role-session-name: GitHubActions
+        aws-region: us-east-1
 
-      - name: Install dependencies
-        run: |
-          pip install -r requirements.txt -t BeatTheStreak/
-      
-      - name: Zip Lambda package
-        run: |
-          cd BeatTheStreak
-          zip -r ../code.zip .
-          cd ..
+    - name: Log in to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          role-to-assume: arn:aws:iam::033896355668:role/mlb-cicd-role
-          role-session-name: GitHubActions
-          aws-region: ${{ env.REGION }}
+    - name: Build, tag, and push image to ECR
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        IMAGE_TAG: latest
+      run: |
+        docker build -t $ECR_REGISTRY/beatthestreak:$IMAGE_TAG .
+        docker push $ECR_REGISTRY/beatthestreak:$IMAGE_TAG
 
-      - name: Upload to S3
-        run: |
-          aws s3 cp code.zip s3://${{ env.S3_BUCKET }}/${{ env.S3_KEY }}
-
-      - name: Deploy CloudFormation Stack
-        run: |
-          aws cloudformation deploy \
-            --template-file template.yaml \
-            --stack-name BeatTheStreak \
-            --capabilities CAPABILITY_NAMED_IAM \
-            --parameter-overrides \
-              Environment=${{ env.ENVIRONMENT }} \
-              PythonRuntime=${{ env.PYTHON_RUNTIME }}
+    - name: Deploy to ECS
+      run: |
+        aws ecs update-service \
+          --cluster BeatTheStreakCluster \
+          --service BeatTheStreakService \
+          --force-new-deployment

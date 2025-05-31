@@ -156,6 +156,11 @@ Resources:
           SecurityGroups:
             - !Ref ServiceSecurityGroup
       TaskDefinition: !Ref TaskDefinition
+  
+  ECRRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: beatthestreak
 
 Outputs:
   LoadBalancerDNS:

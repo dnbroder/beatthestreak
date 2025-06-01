@@ -5,39 +5,50 @@ on:
     branches:
       - main
 
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: beatthestreak
+  ECS_STACK_NAME: beatthestreak-stack
+  IMAGE_TAG: latest
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     permissions:
       id-token: write
       contents: read
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v2
-      with:
-        role-to-assume: arn:aws:iam::033896355668:role/mlb-cicd-role
-        role-session-name: GitHubActions
-        aws-region: us-east-1
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: arn:aws:iam::033896355668:role/mlb-cicd-role
+          aws-region: ${{ env.AWS_REGION }}
 
-    - name: Log in to Amazon ECR
-      id: login-ecr
-      uses: aws-actions/amazon-ecr-login@v1
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
 
-    - name: Build, tag, and push image to ECR
-      env:
-        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        IMAGE_TAG: latest
-      run: |
-        docker build -t $ECR_REGISTRY/beatthestreak:$IMAGE_TAG .
-        docker push $ECR_REGISTRY/beatthestreak:$IMAGE_TAG
+      - name: Build Docker image
+        run: |
+          docker build -t $ECR_REPOSITORY:$IMAGE_TAG .
+          docker tag $ECR_REPOSITORY:$IMAGE_TAG ${{ steps.login-ecr.outputs.registry }}/${ECR_REPOSITORY}:$IMAGE_TAG
 
-    - name: Deploy to ECS
-      run: |
-        aws ecs update-service \
-          --cluster BeatTheStreakCluster \
-          --service BeatTheStreakService \
-          --force-new-deployment
+      - name: Push Docker image to Amazon ECR
+        run: |
+          docker push ${{ steps.login-ecr.outputs.registry }}/${ECR_REPOSITORY}:$IMAGE_TAG
+
+      - name: Deploy to ECS via CloudFormation
+        run: |
+          aws cloudformation deploy \
+            --template-file ecs_stack.yaml \
+            --stack-name $ECS_STACK_NAME \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --parameter-overrides \
+              Environment=production \
+              ImageUrl=${{ steps.login-ecr.outputs.registry }}/${ECR_REPOSITORY}:$IMAGE_TAG \
+              ContainerPort=80

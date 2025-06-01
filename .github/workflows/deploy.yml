@@ -12,6 +12,7 @@ jobs:
       IMAGE_TAG: latest
       ECS_CLUSTER_NAME: ${{ vars.PRODUCTION }}-cluster
       ECS_SERVICE_NAME: ${{ vars.PRODUCTION }}-service
+      AWS_REGION: us-east-1
 
     steps:
       - name: Checkout code
@@ -22,7 +23,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Log in to Amazon ECR
         id: login-ecr

@@ -1,49 +1,54 @@
 name: Deploy to AWS ECS
 
-permissions:
-  id-token: write
-  contents: read
-
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: beatthestreak
+  ECS_STACK_NAME: beatthestreak-stack
+  IMAGE_TAG: latest
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
 
-    env:
-      IMAGE_TAG: latest
-      ECS_CLUSTER_NAME: ${{ vars.PRODUCTION }}-cluster
-      ECS_SERVICE_NAME: ${{ vars.PRODUCTION }}-service
-      AWS_REGION: us-east-1
+    permissions:
+      id-token: write
+      contents: read
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-to-assume: arn:aws:iam::033896355668:role/mlb-cicd-role
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Log in to Amazon ECR
+      - name: Login to Amazon ECR
         id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v1
+        uses: aws-actions/amazon-ecr-login@v2
 
       - name: Build Docker image
         run: |
-          docker build -t ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/beatthestreak:${{ env.IMAGE_TAG }} .
+          docker build -t $ECR_REPOSITORY:$IMAGE_TAG .
+          docker tag $ECR_REPOSITORY:$IMAGE_TAG ${{ steps.login-ecr.outputs.registry }}/${ECR_REPOSITORY}:$IMAGE_TAG
 
-      - name: Push Docker image to ECR
+      - name: Push Docker image to Amazon ECR
         run: |
-          docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/beatthestreak:${{ env.IMAGE_TAG }}
+          docker push ${{ steps.login-ecr.outputs.registry }}/${ECR_REPOSITORY}:$IMAGE_TAG
 
-      - name: Force ECS deployment
+      - name: Deploy to ECS via CloudFormation
         run: |
-          aws ecs update-service \
-            --cluster ${{ env.ECS_CLUSTER_NAME }} \
-            --service ${{ env.ECS_SERVICE_NAME }} \
-            --force-new-deployment
+          aws cloudformation deploy \
+            --template-file ecs_stack.yaml \
+            --stack-name $ECS_STACK_NAME \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --parameter-overrides \
+              Environment=production \
+              ImageUrl=${{ steps.login-ecr.outputs.registry }}/${ECR_REPOSITORY}:$IMAGE_TAG \
+              ContainerPort=80

@@ -142,21 +142,22 @@ Resources:
           CidrIp: 0.0.0.0/0
 
   ECSService:
-    Type: AWS::ECS::Service
-    DependsOn: AttachGateway
-    Properties:
-      Cluster: !Ref ECSCluster
-      DesiredCount: 1
-      LaunchType: FARGATE
-      NetworkConfiguration:
-        AwsvpcConfiguration:
-          AssignPublicIp: ENABLED
-          Subnets:
-            - !Ref PublicSubnet1
-            - !Ref PublicSubnet2
-          SecurityGroups:
-            - !Ref ServiceSecurityGroup
-      TaskDefinition: !Ref TaskDefinition
+  Type: AWS::ECS::Service
+  DependsOn: AttachGateway
+  Properties:
+    ServiceName: !Sub ${Environment}-service
+    Cluster: !Ref ECSCluster
+    DesiredCount: 1
+    LaunchType: FARGATE
+    NetworkConfiguration:
+      AwsvpcConfiguration:
+        AssignPublicIp: ENABLED
+        Subnets:
+          - !Ref PublicSubnet1
+          - !Ref PublicSubnet2
+        SecurityGroups:
+          - !Ref ServiceSecurityGroup
+    TaskDefinition: !Ref TaskDefinition
 
 Outputs:
   LoadBalancerDNS:

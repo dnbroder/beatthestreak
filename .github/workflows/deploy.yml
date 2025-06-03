@@ -51,4 +51,5 @@ jobs:
             --parameter-overrides \
               Environment=production \
               ImageUrl=${{ steps.login-ecr.outputs.registry }}/${ECR_REPOSITORY}:$IMAGE_TAG \
-              ContainerPort=80
+              ContainerPort=80 \
+            --no-fail-on-empty-changeset

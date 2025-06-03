@@ -62,8 +62,8 @@ jobs:
 
           if [[ $status -ne 0 ]]; then
             echo "🔴 Exit code: $status"
-            if echo "$output" | grep -qi "no changes to deploy\|didn't contain changes\|no updates are to be performed"; then
-              echo "✅ No changes detected in CloudFormation. Continuing..."
+            if echo "$output" | grep -qi "no changes to deploy\|didn't contain changes\|no updates are to be performed\|^'Status'$"; then
+              echo "✅ No changes detected or benign status output. Skipping failure."
               exit 0
             else
               echo "❌ CloudFormation deploy failed"

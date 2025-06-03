@@ -44,7 +44,8 @@ jobs:
 
       - name: Deploy to ECS via CloudFormation
         run: |
-          aws cloudformation deploy \
+          set +e
+          output=$(aws cloudformation deploy \
             --template-file ecs_stack.yaml \
             --stack-name $ECS_STACK_NAME \
             --capabilities CAPABILITY_NAMED_IAM \
@@ -52,4 +53,15 @@ jobs:
               Environment=production \
               ImageUrl=${{ steps.login-ecr.outputs.registry }}/${ECR_REPOSITORY}:$IMAGE_TAG \
               ContainerPort=80 \
-            --no-fail-on-empty-changeset
+            --no-fail-on-empty-changeset 2>&1)
+          status=$?
+          echo "$output"
+          if [[ $status -ne 0 ]]; then
+            if echo "$output" | grep -q "The submitted information didn't contain changes"; then
+              echo "No changes detected. Skipping update."
+              exit 0
+            else
+              echo "CloudFormation deploy failed"
+              exit $status
+            fi
+          fi

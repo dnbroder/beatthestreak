@@ -45,6 +45,7 @@ jobs:
       - name: Deploy to ECS via CloudFormation
         run: |
           set +e
+          echo "🟡 Deploying CloudFormation stack..."
           output=$(aws cloudformation deploy \
             --template-file ecs_stack.yaml \
             --stack-name $ECS_STACK_NAME \
@@ -55,13 +56,17 @@ jobs:
               ContainerPort=80 \
             --no-fail-on-empty-changeset 2>&1)
           status=$?
+
+          echo "🔍 Raw CLI output:"
           echo "$output"
+
           if [[ $status -ne 0 ]]; then
-            if echo "$output" | grep -q "The submitted information didn't contain changes"; then
-              echo "No changes detected. Skipping update."
+            echo "🔴 Exit code: $status"
+            if echo "$output" | grep -qi "no changes to deploy\|didn't contain changes\|no updates are to be performed"; then
+              echo "✅ No changes detected in CloudFormation. Continuing..."
               exit 0
             else
-              echo "CloudFormation deploy failed"
+              echo "❌ CloudFormation deploy failed"
               exit $status
             fi
           fi

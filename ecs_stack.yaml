@@ -95,6 +95,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - logs:CreateLogStream
+                  - logs:CreateLogGroup
                   - logs:PutLogEvents
                   - ecr:GetAuthorizationToken
                   - ecr:BatchCheckLayerAvailability

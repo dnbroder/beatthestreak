@@ -46,6 +46,7 @@ jobs:
         run: |
           set +e
           echo "🟡 Deploying CloudFormation stack..."
+          TIMESTAMP=$(date +%s)
           output=$(aws cloudformation deploy \
             --template-file ecs_stack.yaml \
             --stack-name $ECS_STACK_NAME \
@@ -54,6 +55,7 @@ jobs:
               Environment=production \
               ImageUrl=${{ steps.login-ecr.outputs.registry }}/${ECR_REPOSITORY}:$IMAGE_TAG \
               ContainerPort=80 \
+              ForceRedeploy=$TIMESTAMP \
             --no-fail-on-empty-changeset 2>&1)
           status=$?
 

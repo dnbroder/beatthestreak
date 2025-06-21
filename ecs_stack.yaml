@@ -11,6 +11,10 @@ Parameters:
   ContainerPort:
     Type: Number
     Default: 80
+  ForceRedeploy:
+    Type: String
+    Description: Dummy value to force TaskDefinition redeployment
+    Default: "none"
 
 Resources:
 
@@ -106,7 +110,7 @@ Resources:
   TaskDefinition:
     Type: AWS::ECS::TaskDefinition
     Properties:
-      Family: !Sub ${Environment}-task
+      Family: !Sub ${Environment}-task-${ForceRedeploy}
       Cpu: '512'
       Memory: '1024'
       NetworkMode: awsvpc

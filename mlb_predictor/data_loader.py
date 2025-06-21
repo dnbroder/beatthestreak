@@ -51,3 +51,6 @@ def load_data(source: Literal["mlb", "statsapi"]) -> pd.DataFrame:
     except Exception as e:
         logger.error(f"Unexpected error while loading data: {e}")
         return pd.DataFrame()
+
+if __name__ == "__main__":
+    load_data("statsapi")

@@ -9,6 +9,3 @@ Documentation to come soon :)
 2. ECR Registry must be deployed via CLI.
 
 3. ecs_stack.yaml must be manually deployed in CloudFormation
-
-Donovan
-Maple

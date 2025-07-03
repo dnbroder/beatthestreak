@@ -3,3 +3,4 @@ pandas
 uvicorn
 python-multipart
 requests
+boto3

@@ -4,3 +4,4 @@ uvicorn
 python-multipart
 requests
 boto3
+sklearn

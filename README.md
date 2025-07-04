@@ -8,4 +8,6 @@ Documentation to come soon :)
 
 2. ECR Registry must be deployed via CLI.
 
-3. ecs_stack.yaml must be manually deployed in CloudFormation
+3. Initally, ecs_stack.yaml must be manually deployed in CloudFormation.
+
+4. Right now, CloudFormation stack must be torn down and reconstructed whenever there are changes.

@@ -50,13 +50,13 @@ def load_data(source: Literal["mlb", "statsapi"]) -> pd.DataFrame:
 
 def make_basic_prediction():
     logger.info("Starting basic prediction logic")
-
-    # Simulated data
+    
+    # Simulate some dummy structured data for prediction
     data = pd.DataFrame({
         "hits": [5, 7, 3, 8, 6, 9],
         "runs": [3, 5, 2, 6, 4, 7],
         "home_game": [1, 0, 1, 0, 1, 0],
-        "win": [1, 1, 0, 1, 0, 1]
+        "win": [1, 1, 0, 1, 0, 1]  # Target variable
     })
 
     X = data[["hits", "runs", "home_game"]]
@@ -71,20 +71,20 @@ def make_basic_prediction():
     accuracy = accuracy_score(y_test, predictions)
     logger.info(f"Prediction complete. Accuracy: {accuracy:.2f}")
 
-    # Save to /tmp and then upload to S3
+    # Save prediction results
     output_df = X_test.copy()
     output_df["predicted_win"] = predictions
-    local_file_path = "/tmp/prediction_results.csv"
-    s3_key = "predictions/prediction_results.csv"
-    output_df.to_csv(local_file_path, index=False)
+    local_file = "/tmp/prediction_results.csv"
+    output_df.to_csv(local_file, index=False)
+    logger.info(f"Saved prediction results to {local_file}")
 
-    logger.info("Saved prediction results locally. Uploading to S3...")
-
+    # Upload to S3
     try:
         s3 = boto3.client("s3")
-        s3.upload_file(local_file_path, "mlb-hit-predictor-production-bucket", s3_key)
-        logger.info(f"Uploaded to S3: s3://mlb-hit-predictor-production-bucket/{s3_key}")
-    except (BotoCoreError, ClientError) as e:
+        bucket_name = "mlb-hit-predictor-production-bucket"  # <-- replace this
+        s3.upload_file(local_file, bucket_name, "prediction_results.csv")
+        logger.info("✅ Successfully uploaded prediction_results.csv to S3")
+    except Exception as e:
         logger.error(f"Failed to upload to S3: {e}")
 
     return output_df

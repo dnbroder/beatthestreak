@@ -1,35 +1,38 @@
-from fastapi import FastAPI, HTTPException
-from mlb_predictor import data_loader, predictor
+from fastapi import FastAPI
+from mlb_predictor.predictor import make_basic_prediction
 import logging
 
-# Setup logging
-logging.basicConfig(level=logging.INFO)
+# Configure logger to ensure visibility in CloudWatch
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+handler = logging.StreamHandler()
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 
 app = FastAPI()
 
+@app.on_event("startup")
+async def startup_event():
+    logger.info("🚀 ECS container has started. Running initial prediction.")
+    try:
+        make_basic_prediction()
+        logger.info("✅ Initial prediction completed successfully.")
+    except Exception as e:
+        logger.error(f"❌ Failed to run prediction on startup: {e}")
+
 @app.get("/")
 def read_root():
-    logger.info("Health check endpoint hit.")
-    return {"message": "MLB Predictor API is live."}
+    return {"message": "Welcome to the MLB predictor API. Use POST /predict to re-run predictions."}
 
-@app.get("/predict")
-def run_prediction(source: str = "statsapi"):
+@app.post("/predict")
+def trigger_prediction():
     try:
-        logger.info(f"Starting prediction using source: {source}")
-        
-        # Load data
-        data = data_loader.load_data(source)
-        if data.empty:
-            logger.warning("Data loaded was empty.")
-            raise HTTPException(status_code=500, detail="Failed to load data.")
-
-        # Run prediction
-        predictions = predictor.make_prediction(data)
-        logger.info("Prediction completed successfully.")
-
-        return {"predictions": predictions}
-    
+        df = make_basic_prediction()
+        return {
+            "message": "✅ Prediction executed successfully.",
+            "num_rows": len(df)
+        }
     except Exception as e:
-        logger.exception("Prediction endpoint failed.")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Prediction error: {e}")
+        return {"message": "❌ Prediction failed.", "error": str(e)}

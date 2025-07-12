@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from mlb_predictor.predictor import make_basic_prediction
+from mlb_predictor.predictor import make_over_under_prediction
 import logging
 
 # Configure logger to ensure visibility in CloudWatch
@@ -16,7 +16,7 @@ app = FastAPI()
 async def startup_event():
     logger.info("🚀 ECS container has started. Running initial prediction.")
     try:
-        make_basic_prediction()
+        make_over_under_prediction()
         logger.info("✅ Initial prediction completed successfully.")
     except Exception as e:
         logger.error(f"❌ Failed to run prediction on startup: {e}")
@@ -28,7 +28,7 @@ def read_root():
 @app.post("/predict")
 def trigger_prediction():
     try:
-        df = make_basic_prediction()
+        df = make_over_under_prediction()
         return {
             "message": "✅ Prediction executed successfully.",
             "num_rows": len(df)

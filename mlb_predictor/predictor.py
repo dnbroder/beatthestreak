@@ -1,12 +1,12 @@
 import requests
 import pandas as pd
 import logging
-import boto3
-from botocore.exceptions import BotoCoreError, ClientError
 from typing import Literal
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
+import boto3
+import os
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -16,74 +16,98 @@ formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
-def load_data(source: Literal["mlb", "statsapi"]) -> pd.DataFrame:
-    try:
-        if source == "mlb":
-            url = "https://statsapi.mlb.com/api/v1/schedule?sportId=1"
-        elif source == "statsapi":
-            url = "https://statsapi.mlb.com/api/v1/teams?sportId=1"
-        else:
-            raise ValueError(f"Unsupported source: {source}")
+def get_live_game_data():
+    logger.info("Fetching live MLB game data...")
+    url = "https://statsapi.mlb.com/api/v1/schedule?sportId=1&hydrate=team,linescore,flags,game(content(summary,media(epg)),tickets),broadcasts(all),tickets"
+    response = requests.get(url)
+    response.raise_for_status()
+    json_data = response.json()
 
-        logger.info(f"Requesting data from {source} API...")
-        response = requests.get(url)
-        response.raise_for_status()
-        json_data = response.json()
+    games = []
+    for date in json_data.get("dates", []):
+        for game in date.get("games", []):
+            try:
+                game_pk = game["gamePk"]
+                home_team = game["teams"]["home"]["team"]["name"]
+                away_team = game["teams"]["away"]["team"]["name"]
+                venue = game.get("venue", {}).get("name", "Unknown")
+                game_time = game["gameDate"]
 
-        if "dates" in json_data:
-            data = pd.json_normalize(json_data["dates"])
-        elif "teams" in json_data:
-            data = pd.json_normalize(json_data["teams"])
-        else:
-            logger.warning("Response JSON does not contain expected keys.")
-            return pd.DataFrame()
+                # Fetch boxscore to get pitcher info
+                boxscore_url = f"https://statsapi.mlb.com/api/v1/game/{game_pk}/boxscore"
+                boxscore_resp = requests.get(boxscore_url)
+                boxscore_data = boxscore_resp.json()
 
-        logger.info(f"Successfully loaded data from {source}. Rows: {len(data)}")
-        return data
+                home_pitcher = boxscore_data["teams"]["home"]["pitchers"][0]
+                away_pitcher = boxscore_data["teams"]["away"]["pitchers"][0]
 
-    except requests.RequestException as e:
-        logger.error(f"Request failed for source '{source}': {e}")
+                pitcher_era = boxscore_data["teams"]["home"]["players"][f"ID{home_pitcher}"]["stats"]["pitching"].get("era", 4.50)
+
+                # Simulated or default values until real integration is expanded
+                temperature = 80  # TODO: Integrate real-time weather API
+                park_avg_runs = 9.0  # TODO: Lookup based on venue
+                team_batting_avg = 0.260  # TODO: Fetch from team stats
+                team_vs_pitcher_avg = 0.270  # TODO: Compute from hitter-vs-pitcher matchups
+
+                games.append({
+                    "home_team": home_team,
+                    "away_team": away_team,
+                    "venue": venue,
+                    "game_time": game_time,
+                    "pitcher_era": pitcher_era,
+                    "temperature": temperature,
+                    "park_avg_runs": park_avg_runs,
+                    "team_batting_avg": team_batting_avg,
+                    "team_vs_pitcher_avg": team_vs_pitcher_avg
+                })
+            except Exception as e:
+                logger.warning(f"Failed to process game: {e}")
+                continue
+
+    logger.info(f"Retrieved {len(games)} live games with features")
+    return pd.DataFrame(games)
+
+def make_over_under_prediction():
+    logger.info("Starting over/under prediction model")
+    df = get_live_game_data()
+
+    if df.empty:
+        logger.warning("No live game data available.")
         return pd.DataFrame()
-    except Exception as e:
-        logger.error(f"Unexpected error while loading data: {e}")
-        return pd.DataFrame()
 
-def make_basic_prediction():
-    logger.info("Starting basic prediction logic")
-    
-    # Simulate some dummy structured data for prediction
-    data = pd.DataFrame({
-        "hits": [5, 7, 3, 8, 6, 9],
-        "runs": [3, 5, 2, 6, 4, 7],
-        "home_game": [1, 0, 1, 0, 1, 0],
-        "win": [1, 1, 0, 1, 0, 1]  # Target variable
-    })
+    # Dummy binary target based on ERA for testing (to be replaced by real labels later)
+    df["over"] = df["pitcher_era"].apply(lambda x: 1 if x > 4.00 else 0)
 
-    X = data[["hits", "runs", "home_game"]]
-    y = data["win"]
+    X = df[[
+        "pitcher_era",
+        "temperature",
+        "park_avg_runs",
+        "team_batting_avg",
+        "team_vs_pitcher_avg"
+    ]]
+    y = df["over"]
 
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
-
     model = LogisticRegression()
     model.fit(X_train, y_train)
     predictions = model.predict(X_test)
 
     accuracy = accuracy_score(y_test, predictions)
-    logger.info(f"Prediction complete. Accuracy: {accuracy:.2f}")
+    logger.info(f"Over/Under prediction complete. Accuracy: {accuracy:.2f}")
 
-    # Save prediction results
     output_df = X_test.copy()
-    output_df["predicted_win"] = predictions
-    local_file = "/tmp/prediction_results.csv"
-    output_df.to_csv(local_file, index=False)
-    logger.info(f"Saved prediction results to {local_file}")
+    output_df["predicted_over"] = predictions
 
-    # Upload to S3
+    local_path = "/tmp/over_under_predictions.csv"
+    output_df.to_csv(local_path, index=False)
+    logger.info(f"Saved over/under prediction results to {local_path}")
+
     try:
         s3 = boto3.client("s3")
-        bucket_name = "mlb-hit-predictor-production-bucket"  # <-- replace this
-        s3.upload_file(local_file, bucket_name, "prediction_results.csv")
-        logger.info("✅ Successfully uploaded prediction_results.csv to S3")
+        bucket = os.environ.get("S3_BUCKET_NAME")
+        key = "over_under_predictions.csv"
+        s3.upload_file(local_path, bucket, key)
+        logger.info(f"Uploaded over/under results to S3 at s3://{bucket}/{key}")
     except Exception as e:
         logger.error(f"Failed to upload to S3: {e}")
 

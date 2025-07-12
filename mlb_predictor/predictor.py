@@ -78,6 +78,11 @@ def make_over_under_prediction():
     # Dummy binary target based on ERA for testing (to be replaced by real labels later)
     df["over"] = df["pitcher_era"].apply(lambda x: 1 if x > 4.00 else 0)
 
+    # Check if we have at least two classes to train on
+    if df["over"].nunique() < 2:
+        logger.warning("Insufficient class diversity in target variable 'over'. Skipping training.")
+        return pd.DataFrame()
+
     X = df[[
         "pitcher_era",
         "temperature",

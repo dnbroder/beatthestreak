@@ -75,11 +75,10 @@ def make_over_under_prediction():
         logger.warning("No live game data available.")
         return pd.DataFrame()
 
-    # Dummy binary target based on ERA for testing (to be replaced by real labels later)
-    df["over"] = df["pitcher_era"].apply(lambda x: 1 if x > 4.00 else 0)
+    era_median = df["pitcher_era"].median()
+    df["over"] = df["pitcher_era"].apply(lambda x: 1 if x > era_median else 0)
 
-    # Check if we have at least two classes to train on
-    if df["over"].nunique() < 2:
+    if len(df["over"].unique()) < 2:
         logger.warning("Insufficient class diversity in target variable 'over'. Skipping training.")
         return pd.DataFrame()
 

@@ -1,6 +1,6 @@
 # BeatTheStreak
 
-Documentation to come soon, like real soon:)
+Documentation to come soon, like real real soon:)
 
 (Documentation will contain system diagram, instructions for execution and how to interpret results.)
 

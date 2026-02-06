@@ -213,6 +213,6 @@ Outputs:
     Value: !GetAtt ECSService.Name
   LogGroup:
     Value: !Ref LogGroup
-    Description: !Sub CloudWatch log group for ${Environment}
+    Description: CloudWatch log group - check /ecs/<environment> in CloudWatch
   Environment:
     Value: !Ref Environment

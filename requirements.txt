@@ -1,6 +1,7 @@
-xgboost
+fastapi
 pandas
-numpy
-scikit-learn
-joblib
+uvicorn
+python-multipart
 requests
+boto3
+scikit-learn

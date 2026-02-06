@@ -4,20 +4,20 @@ Description: ECS Fargate Deployment for BeatTheStreak
 Parameters:
   Environment:
     Type: String
-    Default: production
+    Default: test
     AllowedValues:
       - production
       - test
   ImageUrl:
     Type: String
-    Default: 033896355668.dkr.ecr.us-east-1.amazonaws.com/beatthestreak:latest
+    Default: 033896355668.dkr.ecr.us-east-1.amazonaws.com/beatthestreak:test
   ContainerPort:
     Type: Number
     Default: 8080
   ForceRedeploy:
     Type: String
     Description: Dummy value to force TaskDefinition redeployment
-    Default: "none"
+    Default: init
 
 Resources:
 

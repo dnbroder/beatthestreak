@@ -5,6 +5,9 @@ Parameters:
   Environment:
     Type: String
     Default: production
+    AllowedValues:
+      - production
+      - test
   ImageUrl:
     Type: String
     Default: 033896355668.dkr.ecr.us-east-1.amazonaws.com/beatthestreak:latest
@@ -83,6 +86,7 @@ Resources:
   ExecutionRole:
     Type: AWS::IAM::Role
     Properties:
+      RoleName: !Sub ${Environment}-ecs-execution-role
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -110,6 +114,7 @@ Resources:
   TaskRole:
     Type: AWS::IAM::Role
     Properties:
+      RoleName: !Sub ${Environment}-ecs-task-role
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -149,7 +154,9 @@ Resources:
           Essential: true
           Environment:
             - Name: S3_BUCKET_NAME
-              Value: ""    # <-- set to your bucket name when ready
+              Value: ""
+            - Name: ENVIRONMENT
+              Value: !Ref Environment
           HealthCheck:
             Command:
               - CMD-SHELL
@@ -174,7 +181,7 @@ Resources:
   ServiceSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Access to ECS Service
+      GroupDescription: !Sub Access to ${Environment} ECS Service
       VpcId: !Ref VPC
       SecurityGroupIngress:
         - IpProtocol: tcp
@@ -206,4 +213,6 @@ Outputs:
     Value: !GetAtt ECSService.Name
   LogGroup:
     Value: !Ref LogGroup
-    Description: CloudWatch log group - check here for API logs
+    Description: !Sub CloudWatch log group for ${Environment}
+  Environment:
+    Value: !Ref Environment

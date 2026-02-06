@@ -5,26 +5,138 @@ on:
     branches:
       - test
 
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: beatthestreak
+  ECS_STACK_NAME: beatthestreak-test-stack
+  IMAGE_TAG: test
+  ENVIRONMENT: test
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: test
+    permissions:
+      id-token: write
+      contents: read
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
-      - name: Configure AWS Credentials
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+          role-to-assume: arn:aws:iam::033896355668:role/mlb-cicd-role
+          aws-region: ${{ env.AWS_REGION }}
 
-      - name: Deploy CloudFormation Stack
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build Docker image
         run: |
-          aws cloudformation deploy \
-            --template-file template-test.yaml \
-            --stack-name mlb-hit-predictor-test \
-            --parameter-overrides Environment=test \
-            --capabilities CAPABILITY_IAM
+          docker build -t $ECR_REPOSITORY:$IMAGE_TAG .
+          docker tag $ECR_REPOSITORY:$IMAGE_TAG ${{ steps.login-ecr.outputs.registry }}/${ECR_REPOSITORY}:$IMAGE_TAG
+
+      - name: Push Docker image to Amazon ECR
+        run: |
+          docker push ${{ steps.login-ecr.outputs.registry }}/${ECR_REPOSITORY}:$IMAGE_TAG
+
+      # ----------------------------------------------------------------
+      # Deploys to a SEPARATE stack: beatthestreak-test-stack
+      # Completely isolated from production.
+      # ----------------------------------------------------------------
+      - name: Deploy test stack via CloudFormation
+        run: |
+          set +e
+          echo "Deploying CloudFormation stack: $ECS_STACK_NAME ($ENVIRONMENT)"
+          TIMESTAMP=$(date +%s)
+          output=$(aws cloudformation deploy \
+            --template-file ecs_stack.yaml \
+            --stack-name $ECS_STACK_NAME \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --parameter-overrides \
+              Environment=$ENVIRONMENT \
+              ImageUrl=${{ steps.login-ecr.outputs.registry }}/${ECR_REPOSITORY}:$IMAGE_TAG \
+              ContainerPort=8080 \
+              ForceRedeploy=$TIMESTAMP \
+            --no-fail-on-empty-changeset 2>&1)
+          status=$?
+
+          echo "CloudFormation output:"
+          echo "$output"
+
+          if [[ $status -ne 0 ]]; then
+            if echo "$output" | grep -qi "no changes to deploy\|didn't contain changes\|no updates are to be performed"; then
+              echo "No changes detected. Continuing."
+              exit 0
+            else
+              echo "CloudFormation deploy failed."
+              exit $status
+            fi
+          fi
+
+      - name: Force new ECS deployment
+        run: |
+          echo "Forcing new deployment to pick up latest image..."
+          aws ecs update-service \
+            --cluster ${ENVIRONMENT}-cluster \
+            --service $(aws ecs list-services --cluster ${ENVIRONMENT}-cluster --query 'serviceArns[0]' --output text | xargs -I{} basename {}) \
+            --force-new-deployment \
+            --region $AWS_REGION
+
+      # ----------------------------------------------------------------
+      # Wait for task to come up, then validate the /test endpoint
+      # ----------------------------------------------------------------
+      - name: Wait for task to stabilize
+        run: |
+          echo "Waiting for ECS service to stabilize..."
+          aws ecs wait services-stable \
+            --cluster ${ENVIRONMENT}-cluster \
+            --services $(aws ecs list-services --cluster ${ENVIRONMENT}-cluster --query 'serviceArns[0]' --output text | xargs -I{} basename {}) \
+            --region $AWS_REGION
+          echo "Service is stable."
+
+      - name: Get task public IP and run smoke test
+        run: |
+          echo "Finding task public IP..."
+          TASK_ARN=$(aws ecs list-tasks \
+            --cluster ${ENVIRONMENT}-cluster \
+            --query 'taskArns[0]' --output text)
+
+          ENI=$(aws ecs describe-tasks \
+            --cluster ${ENVIRONMENT}-cluster \
+            --tasks $TASK_ARN \
+            --query 'tasks[0].attachments[0].details[?name==`networkInterfaceId`].value' \
+            --output text)
+
+          PUBLIC_IP=$(aws ec2 describe-network-interfaces \
+            --network-interface-ids $ENI \
+            --query 'NetworkInterfaces[0].Association.PublicIp' \
+            --output text)
+
+          echo "Task public IP: $PUBLIC_IP"
+          echo ""
+
+          # --- Health check ---
+          echo "=== Testing /health ==="
+          HEALTH=$(curl -sf http://$PUBLIC_IP:8080/health)
+          echo "$HEALTH"
+          echo "$HEALTH" | grep -q '"healthy"' || { echo "FAIL: /health"; exit 1; }
+
+          # --- Root endpoint ---
+          echo ""
+          echo "=== Testing / ==="
+          ROOT=$(curl -sf http://$PUBLIC_IP:8080/)
+          echo "$ROOT"
+          echo "$ROOT" | grep -q '"BeatTheStreak"' || { echo "FAIL: /"; exit 1; }
+
+          # --- Mock pipeline test ---
+          echo ""
+          echo "=== Testing /test (mock pipeline) ==="
+          TEST=$(curl -sf http://$PUBLIC_IP:8080/test)
+          echo "$TEST"
+          echo "$TEST" | grep -q '"pass"' || { echo "FAIL: /test"; exit 1; }
+
+          echo ""
+          echo "All smoke tests passed!"

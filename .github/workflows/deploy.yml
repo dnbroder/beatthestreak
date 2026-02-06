@@ -14,7 +14,6 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     permissions:
       id-token: write
       contents: read
@@ -45,7 +44,7 @@ jobs:
       - name: Deploy to ECS via CloudFormation
         run: |
           set +e
-          echo "🟡 Deploying CloudFormation stack..."
+          echo "Deploying CloudFormation stack..."
           TIMESTAMP=$(date +%s)
           output=$(aws cloudformation deploy \
             --template-file ecs_stack.yaml \
@@ -54,21 +53,21 @@ jobs:
             --parameter-overrides \
               Environment=production \
               ImageUrl=${{ steps.login-ecr.outputs.registry }}/${ECR_REPOSITORY}:$IMAGE_TAG \
-              ContainerPort=80 \
+              ContainerPort=8080 \
               ForceRedeploy=$TIMESTAMP \
             --no-fail-on-empty-changeset 2>&1)
           status=$?
 
-          echo "🔍 Raw CLI output:"
+          echo "Raw CLI output:"
           echo "$output"
 
           if [[ $status -ne 0 ]]; then
-            echo "🔴 Exit code: $status"
+            echo "Exit code: $status"
             if echo "$output" | grep -qi "no changes to deploy\|didn't contain changes\|no updates are to be performed\|^'Status'$"; then
-              echo "✅ No changes detected or benign status output. Skipping failure."
+              echo "No changes detected. Skipping failure."
               exit 0
             else
-              echo "❌ CloudFormation deploy failed"
+              echo "CloudFormation deploy failed"
               exit $status
             fi
           fi

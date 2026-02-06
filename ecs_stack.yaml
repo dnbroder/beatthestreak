@@ -10,7 +10,7 @@ Parameters:
     Default: 033896355668.dkr.ecr.us-east-1.amazonaws.com/beatthestreak:latest
   ContainerPort:
     Type: Number
-    Default: 80
+    Default: 8080
   ForceRedeploy:
     Type: String
     Description: Dummy value to force TaskDefinition redeployment
@@ -147,6 +147,17 @@ Resources:
           PortMappings:
             - ContainerPort: !Ref ContainerPort
           Essential: true
+          Environment:
+            - Name: S3_BUCKET_NAME
+              Value: ""    # <-- set to your bucket name when ready
+          HealthCheck:
+            Command:
+              - CMD-SHELL
+              - curl -f http://localhost:8080/health || exit 1
+            Interval: 30
+            Timeout: 5
+            Retries: 3
+            StartPeriod: 15
           LogConfiguration:
             LogDriver: awslogs
             Options:
@@ -167,8 +178,8 @@ Resources:
       VpcId: !Ref VPC
       SecurityGroupIngress:
         - IpProtocol: tcp
-          FromPort: 80
-          ToPort: 80
+          FromPort: 8080
+          ToPort: 8080
           CidrIp: 0.0.0.0/0
 
   ECSService:
@@ -189,6 +200,10 @@ Resources:
       TaskDefinition: !Ref TaskDefinition
 
 Outputs:
-  LoadBalancerDNS:
-    Description: Public URL (once behind ALB)
+  ClusterName:
+    Value: !Ref ECSCluster
+  ServiceName:
     Value: !GetAtt ECSService.Name
+  LogGroup:
+    Value: !Ref LogGroup
+    Description: CloudWatch log group - check here for API logs

@@ -1,7 +1,3 @@
-"""
-predictor.py – Live game feature extraction + over/under prediction model.
-"""
-
 import os
 import logging
 import boto3

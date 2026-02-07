@@ -4,7 +4,6 @@ predictor.py – Live game feature extraction + over/under prediction model.
 
 import os
 import logging
-
 import boto3
 import pandas as pd
 import requests

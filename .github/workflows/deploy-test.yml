@@ -67,7 +67,7 @@ jobs:
           echo "$output"
 
           if [[ $status -ne 0 ]]; then
-            if echo "$output" | grep -qi "no changes to deploy\|didn't contain changes\|no updates are to be performed"; then
+            if echo "$output" | grep -qi "no changes to deploy\|didn't contain changes\|no updates are to be performed\|'Status'"; then
               echo "No changes detected. Continuing."
               exit 0
             else

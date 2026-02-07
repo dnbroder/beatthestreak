@@ -9,7 +9,6 @@ from sklearn.metrics import accuracy_score
 
 logger = logging.getLogger("beatthestreak")
 
-
 # ---------------------------------------------------------------------------
 # Feature extraction
 # ---------------------------------------------------------------------------

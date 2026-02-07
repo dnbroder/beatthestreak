@@ -5,7 +5,6 @@ from typing import Literal
 
 logger = logging.getLogger("beatthestreak")
 
-
 def load_data(source: Literal["mlb", "statsapi"]) -> pd.DataFrame:
     """
     Load MLB data from a supported free API.

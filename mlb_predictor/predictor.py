@@ -93,7 +93,6 @@ def get_live_game_data() -> pd.DataFrame:
     logger.info(f"Retrieved {len(games)} games with features")
     return pd.DataFrame(games)
 
-
 # ---------------------------------------------------------------------------
 # Prediction
 # ---------------------------------------------------------------------------

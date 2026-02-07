@@ -9,9 +9,8 @@ from sklearn.metrics import accuracy_score
 
 logger = logging.getLogger("beatthestreak")
 
-# ---------------------------------------------------------------------------
 # Feature extraction
-# ---------------------------------------------------------------------------
+
 def get_live_game_data() -> pd.DataFrame:
     """
     Pull today's games from the MLB Stats API, enrich each game with

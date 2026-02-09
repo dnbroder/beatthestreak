@@ -1,9 +1,14 @@
+"""
+data_loader.py – Fetch reference data from the MLB Stats API.
+"""
+
 import requests
 import pandas as pd
 import logging
 from typing import Literal
 
 logger = logging.getLogger("beatthestreak")
+
 
 def load_data(source: Literal["mlb", "statsapi"]) -> pd.DataFrame:
     """

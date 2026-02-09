@@ -1,5 +1,10 @@
+"""
+predictor.py – Live game feature extraction + over/under prediction model.
+"""
+
 import os
 import logging
+
 import boto3
 import pandas as pd
 import requests
@@ -9,8 +14,10 @@ from sklearn.metrics import accuracy_score
 
 logger = logging.getLogger("beatthestreak")
 
-# Feature extraction
 
+# ---------------------------------------------------------------------------
+# Feature extraction
+# ---------------------------------------------------------------------------
 def get_live_game_data() -> pd.DataFrame:
     """
     Pull today's games from the MLB Stats API, enrich each game with
@@ -92,6 +99,7 @@ def get_live_game_data() -> pd.DataFrame:
 
     logger.info(f"Retrieved {len(games)} games with features")
     return pd.DataFrame(games)
+
 
 # ---------------------------------------------------------------------------
 # Prediction

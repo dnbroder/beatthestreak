@@ -3,16 +3,27 @@ BeatTheStreak API – main.py
 Entrypoint for uvicorn (main:app).
 """
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
 from fastapi.responses import JSONResponse
-from mlb_predictor.predictor import get_live_game_data, make_over_under_prediction
-from mlb_predictor.data_loader import load_data
 import pandas as pd
 import logging
 import os
 
+from mlb_predictor.predictor import get_live_game_data, make_over_under_prediction
+from mlb_predictor.data_loader import load_data
+from mlb_predictor.historical_data import (
+    build_season_game_logs,
+    build_multi_season_dataset,
+)
+from mlb_predictor.feature_engineering import (
+    engineer_features,
+    BASIC_FEATURE_COLUMNS,
+    FEATURE_COLUMNS,
+)
+from mlb_predictor.model import train_model, predict_daily, load_model
+
 # ---------------------------------------------------------------------------
-# Logging – visible in CloudWatch via awslogs driver
+# Logging
 # ---------------------------------------------------------------------------
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -29,7 +40,7 @@ ENVIRONMENT = os.environ.get("ENVIRONMENT", "production")
 
 app = FastAPI(
     title="BeatTheStreak API",
-    version="0.1.0",
+    version="0.2.0",
     description=f"Environment: {ENVIRONMENT}",
 )
 
@@ -37,44 +48,37 @@ app = FastAPI(
 @app.on_event("startup")
 async def startup_event():
     logger.info(f"ECS container started. Environment: {ENVIRONMENT}")
-    try:
-        make_over_under_prediction()
-        logger.info("Initial prediction completed successfully.")
-    except Exception as e:
-        logger.error(f"Failed to run prediction on startup: {e}")
 
 
 @app.get("/")
 def root():
-    """Landing page – confirms the API is alive and lists endpoints."""
     return {
         "app": "BeatTheStreak",
-        "version": "0.1.0",
+        "version": "0.2.0",
         "environment": ENVIRONMENT,
         "endpoints": {
-            "GET /":         "This page",
-            "GET /health":   "Container health check",
-            "GET /teams":    "Current MLB teams",
-            "GET /games":    "Today's games with model features",
-            "POST /predict": "Run over/under prediction model",
-            "GET /test":     "End-to-end pipeline test with mock data",
+            "GET /":              "This page",
+            "GET /health":        "Health check",
+            "GET /teams":         "MLB teams",
+            "GET /games":         "Today's games with features",
+            "POST /predict":      "Legacy over/under prediction",
+            "GET /test":          "Mock pipeline test",
+            "POST /train":        "Train XGBoost model (single season)",
+            "POST /train/full":   "Train XGBoost model (multi-season)",
+            "GET /predict/daily": "Today's hit predictions (ranked)",
+            "POST /backtest":     "Run streak simulation",
         },
     }
 
 
 @app.get("/health")
 def health():
-    """
-    Lightweight health check for ECS container health + ALB target group.
-    Does NOT call the MLB API — just confirms the process is responding.
-    """
     logger.info("Health check hit")
     return {"status": "healthy", "environment": ENVIRONMENT}
 
 
 @app.get("/teams")
 def teams():
-    """Return current MLB teams from the Stats API."""
     logger.info("/teams endpoint hit")
     df = load_data("statsapi")
     if df.empty:
@@ -84,7 +88,6 @@ def teams():
 
 @app.get("/games")
 def games():
-    """Return today's games with feature columns used by the model."""
     logger.info("/games endpoint hit")
     df = get_live_game_data()
     if df.empty:
@@ -94,7 +97,6 @@ def games():
 
 @app.post("/predict")
 def trigger_prediction():
-    """Run the over/under prediction model on today's games."""
     logger.info("/predict endpoint hit")
     try:
         df = make_over_under_prediction()
@@ -110,14 +112,11 @@ def trigger_prediction():
         }
     except Exception as e:
         logger.error(f"Prediction error: {e}")
-        return JSONResponse(
-            status_code=500,
-            content={"message": "Prediction failed.", "error": str(e)},
-        )
+        return JSONResponse(status_code=500, content={"message": str(e)})
 
 
 # ---------------------------------------------------------------------------
-# /test – end-to-end pipeline validation with mock data
+# /test – mock pipeline
 # ---------------------------------------------------------------------------
 MOCK_GAMES = [
     {"game_pk": 99901, "home_team": "New York Yankees", "away_team": "Boston Red Sox",
@@ -157,39 +156,28 @@ MOCK_GAMES = [
 
 @app.get("/test")
 def test_pipeline():
-    """
-    End-to-end test using mock game data.
-    Proves: DataFrame creation -> feature extraction -> model train/predict -> response.
-    Works year-round regardless of MLB schedule.
-    """
     logger.info("/test endpoint hit - running mock pipeline")
-
-    from mlb_predictor.predictor import FEATURE_COLS
     from sklearn.linear_model import LogisticRegression
     from sklearn.model_selection import train_test_split
     from sklearn.metrics import accuracy_score
 
     try:
         df = pd.DataFrame(MOCK_GAMES)
-        logger.info(f"Mock data loaded: {len(df)} games")
-
         era_median = df["pitcher_era"].median()
         df["over"] = (df["pitcher_era"] > era_median).astype(int)
 
-        X = df[FEATURE_COLS]
+        feature_cols = ["pitcher_era", "temperature", "park_avg_runs",
+                        "team_batting_avg", "team_vs_pitcher_avg"]
+        X = df[feature_cols]
         y = df["over"]
 
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.3, random_state=42
-        )
-
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
         model = LogisticRegression(max_iter=200)
         model.fit(X_train, y_train)
         predictions = model.predict(X_test)
         accuracy = accuracy_score(y_test, predictions)
 
         logger.info(f"Mock pipeline complete. Accuracy: {accuracy:.2f}")
-
         output = X_test.copy()
         output["predicted_over"] = predictions
         output["actual_over"] = y_test.values
@@ -198,14 +186,97 @@ def test_pipeline():
             "status": "pass",
             "message": "End-to-end pipeline executed successfully with mock data.",
             "mock_games": len(df),
-            "train_size": len(X_train),
-            "test_size": len(X_test),
             "accuracy": round(accuracy, 4),
             "predictions": output.to_dict(orient="records"),
         }
     except Exception as e:
         logger.error(f"Mock pipeline failed: {e}")
-        return JSONResponse(
-            status_code=500,
-            content={"status": "fail", "error": str(e)},
+        return JSONResponse(status_code=500, content={"status": "fail", "error": str(e)})
+
+
+# ---------------------------------------------------------------------------
+# Train XGBoost hit prediction model
+# ---------------------------------------------------------------------------
+@app.post("/train")
+def train_hit_model(
+    season: int = Query(default=2024, description="Season to train on"),
+    max_players: int = Query(default=None, description="Limit players (for testing)"),
+):
+    """Train on a single season."""
+    logger.info(f"/train endpoint hit - season={season}, max_players={max_players}")
+    try:
+        game_logs = build_season_game_logs(season, max_players=max_players)
+        if game_logs.empty:
+            return JSONResponse(status_code=503, content={"error": f"No data for {season}"})
+
+        featured = engineer_features(game_logs)
+        model, metrics = train_model(featured)
+
+        if model is None:
+            return JSONResponse(status_code=503, content={"error": "Training failed", **metrics})
+
+        return {"status": "success", "message": f"Model trained on {season}", "metrics": metrics}
+    except Exception as e:
+        logger.error(f"Training failed: {e}")
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+@app.post("/train/full")
+def train_full_model(
+    start_year: int = Query(default=2000, description="Start season"),
+    end_year: int = Query(default=2024, description="End season"),
+    max_players: int = Query(default=None, description="Limit players per season"),
+):
+    """Train on multiple seasons with recency weighting."""
+    logger.info(f"/train/full endpoint hit - {start_year} to {end_year}")
+    try:
+        game_logs = build_multi_season_dataset(
+            start_year=start_year, end_year=end_year,
+            max_players_per_season=max_players,
         )
+        if game_logs.empty:
+            return JSONResponse(status_code=503, content={"error": "No data retrieved"})
+
+        featured = engineer_features(game_logs)
+        model, metrics = train_model(featured)
+
+        if model is None:
+            return JSONResponse(status_code=503, content={"error": "Training failed", **metrics})
+
+        return {
+            "status": "success",
+            "message": f"Model trained on {start_year}-{end_year}",
+            "total_rows": len(featured),
+            "metrics": metrics,
+        }
+    except Exception as e:
+        logger.error(f"Full training failed: {e}")
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+# ---------------------------------------------------------------------------
+# Daily predictions
+# ---------------------------------------------------------------------------
+@app.get("/predict/daily")
+def daily_predictions():
+    """Today's hit predictions ranked by confidence."""
+    logger.info("/predict/daily endpoint hit")
+
+    model, feature_cols = load_model()
+    if model is None:
+        return JSONResponse(
+            status_code=503,
+            content={"error": "No trained model. Run POST /train first."},
+        )
+
+    try:
+        return JSONResponse(
+            status_code=501,
+            content={
+                "message": "Daily predictions coming soon — model is trained and ready.",
+                "next_step": "Wire up real-time feature engineering for today's batters.",
+            },
+        )
+    except Exception as e:
+        logger.error(f"Daily prediction failed: {e}")
+        return JSONResponse(status_code=500, content={"error": str(e)})

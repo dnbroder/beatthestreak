@@ -1,7 +1,8 @@
 fastapi
-pandas
 uvicorn
-python-multipart
 requests
-boto3
+pandas
 scikit-learn
+xgboost
+boto3
+numpy

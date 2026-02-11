@@ -37,9 +37,6 @@ jobs:
         run: |
           docker build --no-cache -t $ECR_REPOSITORY:$IMAGE_TAG .
           docker tag $ECR_REPOSITORY:$IMAGE_TAG ${{ steps.login-ecr.outputs.registry }}/${ECR_REPOSITORY}:$IMAGE_TAG
-      - name: Debug - list files in image
-        run: |
-          docker run --rm $ECR_REPOSITORY:$IMAGE_TAG ls -la /app/mlb_predictor/
           
       - name: Push Docker image to Amazon ECR
         run: |

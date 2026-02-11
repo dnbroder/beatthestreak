@@ -318,12 +318,77 @@ def get_park_factor(venue_name: str) -> float:
 
 
 # ---------------------------------------------------------------------------
+# Pull season schedule with venues + starting pitchers (efficient bulk pull)
+# ---------------------------------------------------------------------------
+def get_season_schedule(season: int) -> dict:
+    """
+    Pull the full season schedule to get venue and starting pitcher info
+    for every game. Returns dict keyed by game_pk.
+
+    Much more efficient than calling boxscore for each game individually.
+    """
+    logger.info(f"Fetching season schedule for {season} (venues + pitchers)...")
+    game_info = {}
+
+    # Pull month by month to keep responses manageable
+    for month in range(3, 12):  # March through November
+        start = f"{season}-{month:02d}-01"
+        end_month = month + 1 if month < 12 else 12
+        end_year = season if month < 12 else season
+        end = f"{end_year}-{end_month:02d}-01"
+
+        data = _safe_get(
+            f"{BASE_URL}/schedule",
+            params={
+                "sportId": 1,
+                "startDate": start,
+                "endDate": end,
+                "gameType": "R",  # Regular season only
+                "hydrate": "probablePitcher,venue",
+            }
+        )
+        if not data:
+            continue
+
+        for date_entry in data.get("dates", []):
+            for game in date_entry.get("games", []):
+                gpk = game.get("gamePk")
+                if not gpk:
+                    continue
+
+                venue = game.get("venue", {})
+                venue_name = venue.get("name", "")
+
+                # Get probable/starting pitchers
+                away_team = game.get("teams", {}).get("away", {})
+                home_team = game.get("teams", {}).get("home", {})
+
+                away_pitcher = away_team.get("probablePitcher", {})
+                home_pitcher = home_team.get("probablePitcher", {})
+
+                game_info[gpk] = {
+                    "venue_name": venue_name,
+                    "park_factor": get_park_factor(venue_name),
+                    "home_pitcher_id": home_pitcher.get("id"),
+                    "home_pitcher_name": home_pitcher.get("fullName", "Unknown"),
+                    "away_pitcher_id": away_pitcher.get("id"),
+                    "away_pitcher_name": away_pitcher.get("fullName", "Unknown"),
+                    "home_team_name": home_team.get("team", {}).get("name", ""),
+                    "away_team_name": away_team.get("team", {}).get("name", ""),
+                }
+
+    logger.info(f"Fetched schedule info for {len(game_info)} games in {season}")
+    return game_info
+
+
+# ---------------------------------------------------------------------------
 # Master: Build full season dataset
 # ---------------------------------------------------------------------------
 def build_season_game_logs(season: int, max_players: int = None) -> pd.DataFrame:
     """
     Build complete game log dataset for a season.
     Each row = one player's performance in one game.
+    Now enriched with venue/park factors and opposing pitcher data.
 
     Args:
         season: Year to pull
@@ -339,6 +404,12 @@ def build_season_game_logs(season: int, max_players: int = None) -> pd.DataFrame
     if max_players:
         players = players.head(max_players)
         logger.info(f"Limited to {max_players} players for testing")
+
+    # Pull schedule data (venues + pitchers) in bulk
+    schedule = get_season_schedule(season)
+
+    # Cache pitcher season stats to avoid redundant API calls
+    pitcher_stats_cache = {}
 
     all_logs = []
     player_info_cache = {}
@@ -361,16 +432,76 @@ def build_season_game_logs(season: int, max_players: int = None) -> pd.DataFrame
         logs["player_name"] = row["player_name"]
         logs["position"] = row.get("position", bio.get("position", ""))
 
+        # ----- Enrich each game with pitcher + venue data -----
+        park_factors = []
+        pitcher_eras = []
+        pitcher_whips = []
+        pitcher_k9s = []
+        pitcher_hands = []
+        platoon_advantages = []
+
+        for _, game_row in logs.iterrows():
+            gpk = game_row.get("game_pk")
+            game_data = schedule.get(gpk, {})
+
+            # Park factor
+            park_factors.append(game_data.get("park_factor", 1.0))
+
+            # Determine opposing pitcher
+            is_home = game_row.get("is_home", False)
+            if is_home:
+                opp_pitcher_id = game_data.get("away_pitcher_id")
+            else:
+                opp_pitcher_id = game_data.get("home_pitcher_id")
+
+            # Get opposing pitcher stats (cached)
+            if opp_pitcher_id and opp_pitcher_id not in pitcher_stats_cache:
+                pitcher_stats_cache[opp_pitcher_id] = get_pitcher_season_stats(
+                    opp_pitcher_id, season
+                )
+
+            p_stats = pitcher_stats_cache.get(opp_pitcher_id, {})
+            pitcher_eras.append(p_stats.get("pitcher_era"))
+            pitcher_whips.append(p_stats.get("pitcher_whip"))
+            pitcher_k9s.append(p_stats.get("pitcher_k_per_9"))
+
+            # Pitcher handedness (from bio cache or quick lookup)
+            opp_hand = "U"
+            if opp_pitcher_id:
+                if opp_pitcher_id not in player_info_cache:
+                    player_info_cache[opp_pitcher_id] = get_player_info(opp_pitcher_id)
+                opp_bio = player_info_cache[opp_pitcher_id]
+                opp_hand = opp_bio.get("throw_side", "U")
+            pitcher_hands.append(opp_hand)
+
+            # Platoon advantage
+            bat_side = bio.get("bat_side", "U")
+            platoon = 1 if bat_side == "S" else (
+                1 if (bat_side == "R" and opp_hand == "L") else (
+                    1 if (bat_side == "L" and opp_hand == "R") else 0
+                )
+            )
+            platoon_advantages.append(platoon)
+
+        logs["park_factor"] = park_factors
+        logs["pitcher_era"] = pitcher_eras
+        logs["pitcher_whip"] = pitcher_whips
+        logs["pitcher_k_per_9"] = pitcher_k9s
+        logs["pitcher_hand"] = pitcher_hands
+        logs["platoon_advantage"] = platoon_advantages
+
         all_logs.append(logs)
 
-        if (idx + 1) % 50 == 0:
-            logger.info(f"  Processed {idx + 1}/{len(players)} players for {season}")
+        if (idx + 1) % 10 == 0:
+            logger.info(f"  Processed {idx + 1}/{len(players)} players for {season} "
+                        f"({len(pitcher_stats_cache)} pitchers cached)")
 
     if not all_logs:
         return pd.DataFrame()
 
     result = pd.concat(all_logs, ignore_index=True)
-    logger.info(f"Built {len(result)} game log rows for {season}")
+    logger.info(f"Built {len(result)} game log rows for {season} "
+                f"(with pitcher + park data)")
     return result
 
 

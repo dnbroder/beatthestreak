@@ -247,6 +247,27 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
     bat_side_map = {"R": 0, "L": 1, "S": 2, "U": 0}
     df["bat_side_encoded"] = df["bat_side"].map(bat_side_map).fillna(0).astype(int)
 
+    # Pitcher hand encoding (R=0, L=1, U=0)
+    if "pitcher_hand" in df.columns:
+        pitcher_hand_map = {"R": 0, "L": 1, "U": 0}
+        df["pitcher_hand_encoded"] = df["pitcher_hand"].map(pitcher_hand_map).fillna(0).astype(int)
+
+    # Ensure platoon_advantage exists (should come from data enrichment)
+    if "platoon_advantage" not in df.columns:
+        df["platoon_advantage"] = 0
+
+    # Ensure park_factor exists
+    if "park_factor" not in df.columns:
+        df["park_factor"] = 1.0
+
+    # Fill missing pitcher stats with league averages
+    if "pitcher_era" in df.columns:
+        df["pitcher_era"] = df["pitcher_era"].fillna(df["pitcher_era"].median())
+    if "pitcher_whip" in df.columns:
+        df["pitcher_whip"] = df["pitcher_whip"].fillna(df["pitcher_whip"].median())
+    if "pitcher_k_per_9" in df.columns:
+        df["pitcher_k_per_9"] = df["pitcher_k_per_9"].fillna(df["pitcher_k_per_9"].median())
+
     # ----- Recency weight -----
     df["sample_weight"] = df["season"].apply(compute_sample_weight)
 
@@ -280,10 +301,11 @@ FEATURE_COLUMNS = [
     "is_home",
     "platoon_advantage",
 
-    # Pitcher features (added during enrichment)
+    # Pitcher features
     "pitcher_era",
     "pitcher_whip",
     "pitcher_k_per_9",
+    "pitcher_hand_encoded",
 
     # Environment
     "park_factor",

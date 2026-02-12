@@ -105,6 +105,58 @@ def _games_between_hits(group: pd.DataFrame) -> pd.Series:
     return games_played / (hitless_games + 1)
 
 
+def _aabbh(group: pd.DataFrame) -> pd.Series:
+    """
+    AABBH: Average At Bats Between Hits.
+    Total ABs / Total Hits using prior games only.
+    Lower = more frequent hitter (gets a hit every N at-bats).
+
+    A .333 hitter has AABBH of ~3.0 (hit every 3 ABs)
+    A .250 hitter has AABBH of ~4.0 (hit every 4 ABs)
+    """
+    cum_abs = group["at_bats"].shift(1).cumsum()
+    cum_hits = group["hits"].shift(1).cumsum()
+    return (cum_abs / cum_hits).replace([np.inf, -np.inf], np.nan)
+
+
+def _current_hitless_abs(group: pd.DataFrame) -> pd.Series:
+    """
+    Count consecutive at-bats without a hit heading into this game.
+    Resets to 0 after any game with a hit.
+
+    Uses shift(1) so we're counting the drought BEFORE this game.
+    """
+    hits = group["hits"].shift(1).fillna(0)
+    abs_ = group["at_bats"].shift(1).fillna(0)
+
+    hitless_abs = []
+    running_count = 0
+    for h, ab in zip(hits, abs_):
+        if h > 0:
+            # Got a hit last game — reset, but carry over unhit ABs
+            # e.g., 1-for-4 means 3 ABs after the last hit
+            running_count = int(ab - h)
+        else:
+            # Hitless game — add all ABs to the drought
+            running_count += int(ab)
+        hitless_abs.append(running_count)
+
+    return pd.Series(hitless_abs, index=group.index)
+
+
+def _aabbh_ratio(aabbh: pd.Series, current_hitless_abs: pd.Series) -> pd.Series:
+    """
+    AABBH Ratio: current_hitless_abs / AABBH.
+
+    < 1.0 = within normal rhythm
+    = 1.0 = right at their average
+    > 1.0 = overdue for a hit (regression to mean candidate)
+
+    Higher ratio = stronger BTS pick signal.
+    """
+    return (current_hitless_abs / aabbh).replace([np.inf, -np.inf], np.nan)
+
+
 def _current_hit_streak(group: pd.DataFrame) -> pd.Series:
     """
     Current consecutive games with at least 1 hit.
@@ -235,6 +287,19 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
         _games_between_hits, include_groups=False
     ).reset_index(level=[0, 1], drop=True)
 
+    # Secret sauce v2: AABBH (Average At Bats Between Hits)
+    df["aabbh"] = grouped.apply(
+        _aabbh, include_groups=False
+    ).reset_index(level=[0, 1], drop=True)
+
+    # Current hitless AB streak
+    df["current_hitless_abs"] = grouped.apply(
+        _current_hitless_abs, include_groups=False
+    ).reset_index(level=[0, 1], drop=True)
+
+    # AABBH Ratio: are they overdue? (> 1.0 = overdue for a hit)
+    df["aabbh_ratio"] = _aabbh_ratio(df["aabbh"], df["current_hitless_abs"])
+
     # Current hit streak
     df["hit_streak"] = grouped.apply(
         _current_hit_streak, include_groups=False
@@ -296,6 +361,11 @@ FEATURE_COLUMNS = [
     "games_between_hits",
     "hit_streak",
     "game_num_in_season",
+
+    # AABBH features (secret sauce v2)
+    "aabbh",
+    "current_hitless_abs",
+    "aabbh_ratio",
 
     # Matchup features
     "is_home",

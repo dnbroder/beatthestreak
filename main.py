@@ -306,6 +306,8 @@ def daily_predictions(
                 "batting_avg": round(float(row.get("batting_avg_season", 0)), 3),
                 "last_30_avg": round(float(row.get("avg_last_30", 0)), 3),
                 "consistency": round(float(row.get("games_between_hits", 0)), 2),
+                "aabbh": round(float(row.get("aabbh", 0)), 2),
+                "aabbh_ratio": round(float(row.get("aabbh_ratio", 0)), 2),
                 "platoon_adv": int(row.get("platoon_advantage", 0)),
                 "pitcher_era": round(float(row.get("pitcher_era", 0)), 2),
                 "park_factor": round(float(row.get("park_factor", 1.0)), 2),

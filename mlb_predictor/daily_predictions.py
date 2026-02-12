@@ -238,10 +238,26 @@ def build_batter_features(
     multi_hit_games = (df["hits"] >= 2).sum()
     multi_hit_freq = multi_hit_games / num_games
 
-    # Games between hits (secret sauce)
+    # Games between hits (secret sauce v1)
     got_hit = (df["hits"] >= 1).astype(int)
     hitless_games = (1 - got_hit).sum()
     games_between_hits = num_games / (hitless_games + 1)
+
+    # AABBH: Average At Bats Between Hits (secret sauce v2)
+    aabbh = total_abs / max(total_hits, 1)
+
+    # Current hitless AB streak (counting backwards from most recent game)
+    current_hitless_abs = 0
+    for _, row in df.iloc[::-1].iterrows():
+        if row["hits"] > 0:
+            # This game had hits — count ABs after the last hit
+            current_hitless_abs += int(row["at_bats"] - row["hits"])
+            break
+        else:
+            current_hitless_abs += int(row["at_bats"])
+
+    # AABBH Ratio: > 1.0 means overdue for a hit
+    aabbh_ratio = current_hitless_abs / aabbh if aabbh > 0 else 0
 
     # Current hit streak (counting backwards from most recent game)
     hit_streak = 0
@@ -261,6 +277,9 @@ def build_batter_features(
         "multi_hit_freq": multi_hit_freq,
         "avg_abs_per_game": total_abs / num_games,
         "games_between_hits": games_between_hits,
+        "aabbh": aabbh,
+        "current_hitless_abs": current_hitless_abs,
+        "aabbh_ratio": aabbh_ratio,
         "hit_streak": hit_streak,
         "game_num_in_season": num_games,
     }
@@ -471,13 +490,15 @@ def write_predictions_to_s3(df: pd.DataFrame, date_str: str):
             "rank", "player_name", "team", "opponent", "venue",
             "bat_side", "lineup_position", "opp_pitcher", "opp_pitcher_hand",
             "confidence_pct", "batting_avg_season", "avg_last_30",
-            "games_between_hits", "platoon_advantage", "pitcher_era",
+            "games_between_hits", "aabbh", "aabbh_ratio",
+            "platoon_advantage", "pitcher_era",
             "park_factor", "date",
         ]].copy()
 
         # Round floats for readability
         float_cols = ["confidence_pct", "batting_avg_season", "avg_last_30",
-                      "games_between_hits", "pitcher_era", "park_factor"]
+                      "games_between_hits", "aabbh", "aabbh_ratio",
+                      "pitcher_era", "park_factor"]
         for col in float_cols:
             if col in top10.columns:
                 top10[col] = top10[col].round(3)

@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 import pandas as pd
 import logging
 import os
+from datetime import datetime
 
 from mlb_predictor.predictor import get_live_game_data, make_over_under_prediction
 from mlb_predictor.data_loader import load_data
@@ -20,7 +21,8 @@ from mlb_predictor.feature_engineering import (
     BASIC_FEATURE_COLUMNS,
     FEATURE_COLUMNS,
 )
-from mlb_predictor.model import train_model, predict_daily, load_model
+from mlb_predictor.model import train_model, load_model
+from mlb_predictor.daily_predictions import run_daily_predictions
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -258,25 +260,64 @@ def train_full_model(
 # Daily predictions
 # ---------------------------------------------------------------------------
 @app.get("/predict/daily")
-def daily_predictions():
-    """Today's hit predictions ranked by confidence."""
-    logger.info("/predict/daily endpoint hit")
-
-    model, feature_cols = load_model()
-    if model is None:
-        return JSONResponse(
-            status_code=503,
-            content={"error": "No trained model. Run POST /train first."},
-        )
+def daily_predictions(
+    date: str = Query(default=None, description="Date YYYY-MM-DD (default: today)"),
+    season: int = Query(default=None, description="Season year (default: from date)"),
+    write_s3: bool = Query(default=True, description="Write results to S3"),
+):
+    """
+    Full daily prediction pipeline.
+    Pulls games, lineups, builds features, scores batters, ranks picks.
+    Writes top 10 + full predictions to S3 for QuickSight.
+    """
+    logger.info(f"/predict/daily endpoint hit - date={date}")
 
     try:
-        return JSONResponse(
-            status_code=501,
-            content={
-                "message": "Daily predictions coming soon — model is trained and ready.",
-                "next_step": "Wire up real-time feature engineering for today's batters.",
-            },
+        predictions = run_daily_predictions(
+            date_str=date,
+            season=season,
+            write_to_s3=write_s3,
         )
+
+        if predictions.empty:
+            return JSONResponse(
+                status_code=404,
+                content={"error": f"No predictions generated for {date or 'today'}. "
+                         "Are there games scheduled?"},
+            )
+
+        # Return top 10 in response
+        top10 = predictions.head(10)
+
+        # Build clean response
+        picks = []
+        for _, row in top10.iterrows():
+            picks.append({
+                "rank": int(row["rank"]),
+                "player": row["player_name"],
+                "team": row["team"],
+                "opponent": row["opponent"],
+                "venue": row.get("venue", ""),
+                "bat_side": row.get("bat_side", ""),
+                "lineup_pos": int(row.get("lineup_position", 0)),
+                "vs_pitcher": row.get("opp_pitcher", ""),
+                "pitcher_hand": row.get("opp_pitcher_hand", ""),
+                "confidence": float(row["confidence_pct"]),
+                "batting_avg": round(float(row.get("batting_avg_season", 0)), 3),
+                "last_30_avg": round(float(row.get("avg_last_30", 0)), 3),
+                "consistency": round(float(row.get("games_between_hits", 0)), 2),
+                "platoon_adv": int(row.get("platoon_advantage", 0)),
+                "pitcher_era": round(float(row.get("pitcher_era", 0)), 2),
+                "park_factor": round(float(row.get("park_factor", 1.0)), 2),
+            })
+
+        return {
+            "date": date or datetime.now().strftime("%Y-%m-%d"),
+            "total_batters_scored": len(predictions),
+            "top_10_picks": picks,
+            "s3_written": write_s3,
+        }
+
     except Exception as e:
         logger.error(f"Daily prediction failed: {e}")
         return JSONResponse(status_code=500, content={"error": str(e)})

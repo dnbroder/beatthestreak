@@ -151,8 +151,8 @@ def train_model(
     if calibrate and len(X_test) > 50:
         logger.info("Calibrating probabilities...")
         try:
-            cal_model = CalibratedClassifierCV(model, cv="prefit", method="sigmoid")
-            cal_model.fit(X_test, y_test, sample_weight=w_test)
+            cal_model = CalibratedClassifierCV(model, cv=5, method="sigmoid")
+            cal_model.fit(X_train, y_train, sample_weight=w_train)
             final_model = cal_model
         except Exception as e:
             logger.warning(f"Calibration failed, using uncalibrated: {e}")
@@ -178,7 +178,7 @@ def train_model(
 
     # ----- Feature importance -----
     if hasattr(model, "feature_importances_"):
-        importance = dict(zip(feature_cols, [float(x) for x in model.feature_importances_]))
+        importance = dict(zip(feature_cols, model.feature_importances_))
         sorted_imp = dict(sorted(importance.items(), key=lambda x: x[1], reverse=True))
         metrics["feature_importance"] = sorted_imp
         logger.info("Feature importance (top 5):")
@@ -194,12 +194,7 @@ def train_model(
     # Save feature column order (needed for prediction)
     with open(os.path.join(MODEL_DIR, "feature_cols.pkl"), "wb") as f:
         pickle.dump(feature_cols, f)
-    
-    # Ensure all metrics are JSON-serializable (no numpy types)
-    for k, v in metrics.items():
-        if isinstance(v, (np.floating, np.integer)):
-            metrics[k] = float(v)
-            
+
     return final_model, metrics
 
 

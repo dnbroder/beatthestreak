@@ -23,6 +23,7 @@ from mlb_predictor.feature_engineering import (
 )
 from mlb_predictor.model import train_model, load_model
 from mlb_predictor.daily_predictions import run_daily_predictions
+from mlb_predictor.backtester import run_backtest
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -322,4 +323,56 @@ def daily_predictions(
 
     except Exception as e:
         logger.error(f"Daily prediction failed: {e}")
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+# ---------------------------------------------------------------------------
+# Backtest
+# ---------------------------------------------------------------------------
+@app.post("/backtest")
+def backtest_model(
+    season: int = Query(default=2024, description="Season to backtest"),
+    interval: int = Query(default=3, description="Test every Nth game date"),
+    max_dates: int = Query(default=None, description="Cap dates (for testing)"),
+    write_s3: bool = Query(default=True, description="Write results to S3"),
+):
+    """
+    Run backtest across a season: predict → check actuals → compute hit rates + streaks.
+    WARNING: This is a long-running operation. Use max_dates for quick tests.
+    """
+    logger.info(f"/backtest endpoint hit - season={season}, interval={interval}, max_dates={max_dates}")
+
+    try:
+        results = run_backtest(
+            season=season,
+            interval=interval,
+            max_dates=max_dates,
+            write_to_s3=write_s3,
+        )
+
+        if "error" in results:
+            return JSONResponse(status_code=503, content=results)
+
+        # Return summary (daily detail is in S3)
+        summary = results["summary"]
+
+        # Add a quick daily overview (just hit/miss per day, not full pick details)
+        daily_overview = []
+        for day in results["daily_results"]:
+            daily_overview.append({
+                "date": day["date"],
+                "top1_hit": day.get("top1_rate", None) == 1.0 if day.get("top1_total", 0) > 0 else None,
+                "top5_rate": day.get("top5_rate", 0),
+                "top10_rate": day.get("top10_rate", 0),
+            })
+
+        return {
+            "status": "success",
+            "summary": summary,
+            "daily_overview": daily_overview,
+            "s3_written": write_s3,
+        }
+
+    except Exception as e:
+        logger.error(f"Backtest failed: {e}")
         return JSONResponse(status_code=500, content={"error": str(e)})

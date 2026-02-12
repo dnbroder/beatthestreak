@@ -2,7 +2,7 @@
 
 Documentation to come soon, like real real soon:)
 
-(Documentation will contain system diagram, instructions for execution and how to interpret results.)
+(Documentation will contain system diagram, instructions for execution, features write up and how to interpret results.)
 
 1. CICD Role (mlb-cicd-role) must be deployed prior to running any deployment of CloudFormation resources via GitHub. IAM policy for this role can be found here:
 

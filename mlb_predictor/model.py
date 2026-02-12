@@ -178,12 +178,17 @@ def train_model(
 
     # ----- Feature importance -----
     if hasattr(model, "feature_importances_"):
-        importance = dict(zip(feature_cols, model.feature_importances_))
+        importance = dict(zip(feature_cols, [float(x) for x in model.feature_importances_]))
         sorted_imp = dict(sorted(importance.items(), key=lambda x: x[1], reverse=True))
         metrics["feature_importance"] = sorted_imp
         logger.info("Feature importance (top 5):")
         for feat, imp in list(sorted_imp.items())[:5]:
             logger.info(f"  {feat}: {imp:.4f}")
+
+    # Ensure all metrics are JSON-serializable (no numpy types)
+    for k, v in metrics.items():
+        if isinstance(v, (np.floating, np.integer)):
+            metrics[k] = float(v)
 
     # ----- Save model -----
     os.makedirs(MODEL_DIR, exist_ok=True)

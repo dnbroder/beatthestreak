@@ -106,7 +106,7 @@ def get_season_game_dates(season: int, interval: int = 3) -> list:
     all_dates = set()
 
     # Pull month by month
-    for month in range(3, 11):  # March through October
+    for month in range(4, 11):  # April through October (March lacks AABBH history)
         start = f"{season}-{month:02d}-01"
         end_month = month + 1
         end = f"{season}-{end_month:02d}-01" if month < 12 else f"{season}-12-31"

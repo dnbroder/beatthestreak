@@ -259,6 +259,9 @@ def build_batter_features(
     # AABBH Ratio: > 1.0 means overdue for a hit
     aabbh_ratio = current_hitless_abs / aabbh if aabbh > 0 else 0
 
+    # Optimal zone: 0.5-1.0 aabbh_ratio = 81.8% hit rate in backtest
+    in_optimal_zone = 1 if 0.5 <= aabbh_ratio < 1.0 else 0
+
     # Current hit streak (counting backwards from most recent game)
     hit_streak = 0
     for h in reversed(got_hit.tolist()):
@@ -280,6 +283,7 @@ def build_batter_features(
         "aabbh": aabbh,
         "current_hitless_abs": current_hitless_abs,
         "aabbh_ratio": aabbh_ratio,
+        "in_optimal_zone": in_optimal_zone,
         "hit_streak": hit_streak,
         "game_num_in_season": num_games,
     }
@@ -490,7 +494,7 @@ def write_predictions_to_s3(df: pd.DataFrame, date_str: str):
             "rank", "player_name", "team", "opponent", "venue",
             "bat_side", "lineup_position", "opp_pitcher", "opp_pitcher_hand",
             "confidence_pct", "batting_avg_season", "avg_last_30",
-            "games_between_hits", "aabbh", "aabbh_ratio",
+            "games_between_hits", "aabbh", "aabbh_ratio", "in_optimal_zone",
             "platoon_advantage", "pitcher_era",
             "park_factor", "date",
         ]].copy()

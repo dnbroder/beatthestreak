@@ -14,6 +14,12 @@ Features:
     - games_between_hits: Average games between hitless games (secret sauce)
     - hit_streak: Current consecutive games with a hit
 
+  AABBH (secret sauce v2):
+    - aabbh: Average At Bats Between Hits
+    - current_hitless_abs: Consecutive ABs since last hit
+    - aabbh_ratio: current_hitless_abs / aabbh (overdue signal)
+    - in_optimal_zone: 1 if aabbh_ratio is in the 0.5-1.0 sweet spot (81.8% hit rate)
+
   PITCHER:
     - pitcher_era: Opposing starter's season ERA
     - pitcher_whip: Opposing starter's WHIP
@@ -155,6 +161,24 @@ def _aabbh_ratio(aabbh: pd.Series, current_hitless_abs: pd.Series) -> pd.Series:
     Higher ratio = stronger BTS pick signal.
     """
     return (current_hitless_abs / aabbh).replace([np.inf, -np.inf], np.nan)
+
+
+def _in_optimal_zone(aabbh_ratio: pd.Series) -> pd.Series:
+    """
+    Optimal AABBH zone indicator.
+
+    Backtest analysis (160 picks across 18 dates) showed:
+      - aabbh_ratio 0.5 - 1.0: 81.8% hit rate (n=77)
+      - aabbh_ratio 0.0 - 0.5: 75.9% hit rate (n=29)
+      - aabbh_ratio 1.0 - 1.5: 73.7% hit rate (n=19)
+      - aabbh_ratio 3.0 - 4.0: 55.6% hit rate (n=9)
+
+    The sweet spot is 0.5-1.0: the player is "due but not overdue."
+    Their hitless drought is between half and equal to their normal rhythm.
+
+    Returns 1 if in optimal zone, 0 otherwise.
+    """
+    return ((aabbh_ratio >= 0.5) & (aabbh_ratio < 1.0)).astype(int)
 
 
 def _current_hit_streak(group: pd.DataFrame) -> pd.Series:
@@ -300,6 +324,9 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
     # AABBH Ratio: are they overdue? (> 1.0 = overdue for a hit)
     df["aabbh_ratio"] = _aabbh_ratio(df["aabbh"], df["current_hitless_abs"])
 
+    # Optimal zone indicator (0.5-1.0 aabbh_ratio = 81.8% hit rate)
+    df["in_optimal_zone"] = _in_optimal_zone(df["aabbh_ratio"])
+
     # Current hit streak
     df["hit_streak"] = grouped.apply(
         _current_hit_streak, include_groups=False
@@ -366,6 +393,7 @@ FEATURE_COLUMNS = [
     "aabbh",
     "current_hitless_abs",
     "aabbh_ratio",
+    "in_optimal_zone",
 
     # Matchup features
     "is_home",

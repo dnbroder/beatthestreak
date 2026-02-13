@@ -11,8 +11,10 @@ Pipeline:
 """
 
 import io
+import sys
 import time
 import logging
+import traceback
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -25,6 +27,11 @@ from mlb_predictor.daily_predictions import run_daily_predictions
 from mlb_predictor.model import load_model
 
 logger = logging.getLogger("beatthestreak")
+
+
+def log(msg):
+    """Print with flush so it always shows in container logs immediately."""
+    print(f"[BACKTEST] {msg}", flush=True)
 
 
 # ---------------------------------------------------------------------------
@@ -45,10 +52,12 @@ def get_actual_results(date_str: str) -> dict:
         }
     )
     if not data:
+        log(f"  No schedule data for {date_str}")
         return {}
 
     # Get boxscores for each game to find individual player results
     results = {}
+    games_checked = 0
     for date_entry in data.get("dates", []):
         for game in date_entry.get("games", []):
             game_pk = game.get("gamePk")
@@ -60,6 +69,7 @@ def get_actual_results(date_str: str) -> dict:
             if not box:
                 continue
 
+            games_checked += 1
             # Small delay between boxscore fetches to be nice to the API
             time.sleep(0.3)
 
@@ -88,6 +98,7 @@ def get_actual_results(date_str: str) -> dict:
                             "got_hit": 1 if hits > 0 else 0,
                         }
 
+    log(f"  Actuals: {games_checked} games, {len(results)} batters with ABs")
     return results
 
 
@@ -101,7 +112,7 @@ def get_season_game_dates(season: int, interval: int = 3) -> list:
         season: Year
         interval: Pick every Nth game date (3 = every 3rd day with games)
     """
-    logger.info(f"Fetching game dates for {season} season...")
+    log(f"Fetching game dates for {season} season...")
 
     all_dates = set()
 
@@ -132,8 +143,7 @@ def get_season_game_dates(season: int, interval: int = 3) -> list:
     sorted_dates = sorted(all_dates)
     sampled = sorted_dates[::interval]
 
-    logger.info(f"Found {len(sorted_dates)} game dates, sampled {len(sampled)} "
-                f"(every {interval} days)")
+    log(f"Found {len(sorted_dates)} game dates, sampled {len(sampled)} (every {interval} days)")
     return sampled
 
 
@@ -163,27 +173,35 @@ def run_backtest(
     if top_n_picks is None:
         top_n_picks = [1, 2, 3, 5, 10]
 
-    logger.info(f"=== BACKTEST: {season} season, every {interval} days ===")
+    log(f"=== BACKTEST START: {season} season, every {interval} days ===")
 
     # Check model is loaded
     model, feature_cols = load_model()
     if model is None:
-        logger.error("No trained model. Run /train first.")
+        log("ERROR: No trained model. Run /train first.")
         return {"error": "No trained model"}
+    log(f"Model loaded with {len(feature_cols)} features")
 
     # Get dates to test
     dates = get_season_game_dates(season, interval=interval)
     if max_dates:
         dates = dates[:max_dates]
 
-    logger.info(f"Running backtest on {len(dates)} dates...")
+    if not dates:
+        log("ERROR: No dates to test")
+        return {"error": "No game dates found"}
+
+    log(f"Will test {len(dates)} dates: {dates[0]} to {dates[-1]}")
 
     # Track results
     daily_results = []
     streak_tracker = {n: {"current": 0, "longest": 0} for n in top_n_picks}
+    running_hits = 0
+    running_total = 0
 
     for i, date_str in enumerate(dates):
-        logger.info(f"[{i+1}/{len(dates)}] Backtesting {date_str}...")
+        log(f"")
+        log(f"--- [{i+1}/{len(dates)}] {date_str} ---")
 
         # Rate limit: pause between dates to avoid MLB API throttling
         if i > 0:
@@ -191,23 +209,34 @@ def run_backtest(
 
         # Run predictions (don't write each day to S3)
         try:
+            log(f"  Generating predictions...")
             predictions = run_daily_predictions(
                 date_str=date_str,
                 season=season,
                 write_to_s3=False,
             )
         except Exception as e:
-            logger.error(f"  Prediction failed for {date_str}: {e}")
+            log(f"  ERROR generating predictions: {e}")
+            log(f"  Traceback: {traceback.format_exc()}")
             continue
 
-        if predictions.empty:
-            logger.warning(f"  No predictions for {date_str}, skipping")
+        if predictions is None or (hasattr(predictions, 'empty') and predictions.empty):
+            log(f"  No predictions for {date_str}, skipping")
             continue
+
+        log(f"  Got {len(predictions)} predictions")
 
         # Get actual results
-        actuals = get_actual_results(date_str)
+        log(f"  Fetching actual boxscores...")
+        try:
+            actuals = get_actual_results(date_str)
+        except Exception as e:
+            log(f"  ERROR fetching actuals: {e}")
+            log(f"  Traceback: {traceback.format_exc()}")
+            continue
+
         if not actuals:
-            logger.warning(f"  No actual results for {date_str}, skipping")
+            log(f"  No actual results for {date_str}, skipping")
             continue
 
         # Evaluate each top-N threshold
@@ -268,13 +297,28 @@ def run_backtest(
                     streak_tracker[n]["current"] = 0
 
         daily_results.append(day_entry)
-        logger.info(f"  Top-1: {'HIT' if day_entry.get('top1_rate', 0) == 1.0 else 'MISS'} | "
-                    f"Top-5 rate: {day_entry.get('top5_rate', 0):.0%} | "
-                    f"Top-10 rate: {day_entry.get('top10_rate', 0):.0%}")
+
+        # Log the top-1 pick result prominently
+        top1_pick = day_entry.get("top1_picks", [{}])[0] if day_entry.get("top1_picks") else {}
+        top1_result = "HIT" if day_entry.get("top1_rate", 0) == 1.0 else "MISS"
+        running_hits += day_entry.get("top1_hits", 0)
+        running_total += day_entry.get("top1_total", 0)
+        running_pct = round(running_hits / max(running_total, 1) * 100, 1)
+
+        log(f"  TOP-1: {top1_pick.get('player', '???')} -> {top1_result} "
+            f"({top1_pick.get('actual_hits', '?')}-for-{top1_pick.get('actual_abs', '?')})")
+        log(f"  Top-5: {day_entry.get('top5_rate', 0):.0%} | "
+            f"Top-10: {day_entry.get('top10_rate', 0):.0%}")
+        log(f"  Running top-1: {running_hits}/{running_total} = {running_pct}%")
 
     # ---------------------------------------------------------------------------
     # Aggregate results
     # ---------------------------------------------------------------------------
+    log(f"")
+    log(f"{'='*60}")
+    log(f"=== BACKTEST COMPLETE ===")
+    log(f"{'='*60}")
+
     num_dates = len(daily_results)
     summary = {
         "season": season,
@@ -294,12 +338,12 @@ def run_backtest(
         if n <= 2:
             summary[f"top{n}_longest_streak"] = streak_tracker[n]["longest"]
 
-        logger.info(f"Top-{n} hit rate: {hit_rate:.1%} ({total_hits}/{total_eval})")
+        log(f"Top-{n} hit rate: {hit_rate:.1%} ({total_hits}/{total_eval})")
 
     if 1 in top_n_picks:
-        logger.info(f"Longest streak (top-1 pick): {streak_tracker[1]['longest']}")
+        log(f"Longest streak (top-1 pick): {streak_tracker[1]['longest']}")
     if 2 in top_n_picks:
-        logger.info(f"Longest streak (top-2 picks): {streak_tracker[2]['longest']}")
+        log(f"Longest streak (top-2 picks): {streak_tracker[2]['longest']}")
 
     results = {
         "summary": summary,
@@ -308,8 +352,10 @@ def run_backtest(
 
     # Write to S3
     if write_to_s3:
+        log(f"Writing results to S3...")
         _write_backtest_to_s3(results, season)
 
+    log(f"=== DONE ===")
     return results
 
 
@@ -378,7 +424,8 @@ def _write_backtest_to_s3(results: dict, season: int):
             ContentType="text/csv",
         )
 
-        logger.info(f"Backtest results written to s3://{bucket}/{run_prefix}/")
+        log(f"Results written to s3://{bucket}/{run_prefix}/")
 
     except Exception as e:
-        logger.error(f"Failed to write backtest to S3: {e}")
+        log(f"ERROR writing to S3: {e}")
+        log(f"Traceback: {traceback.format_exc()}")

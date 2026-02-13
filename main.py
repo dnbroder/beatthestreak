@@ -70,6 +70,7 @@ def root():
             "POST /train/full":   "Train XGBoost model (multi-season)",
             "GET /predict/daily": "Today's hit predictions (ranked)",
             "POST /backtest":     "Run streak simulation",
+            "POST /backtest-async": "Run full-season backtest (background, results to S3)",
             "POST /run-script":   "Execute ad-hoc analysis script from S3",
         },
     }
@@ -419,3 +420,55 @@ def run_s3_script(
     except Exception as e:
         logger.error(f"Script execution failed: {e}")
         return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+# ---------------------------------------------------------------------------
+# Async Backtest (fire-and-forget, results go to S3)
+# ---------------------------------------------------------------------------
+@app.post("/backtest-async")
+def backtest_async(
+    season: int = Query(default=2024, description="Season to backtest"),
+    interval: int = Query(default=3, description="Test every Nth game date"),
+    max_dates: int = Query(default=None, description="Cap dates (for testing)"),
+):
+    """
+    Launch backtest in background thread. Results written to S3 when complete.
+    Returns immediately with status 'started'.
+    Check results at: s3://mlb-hit-predictor-{env}-bucket/backtest/{season}/
+    """
+    import threading
+
+    logger.info(f"/backtest-async endpoint hit - season={season}, interval={interval}, max_dates={max_dates}")
+
+    def _run():
+        try:
+            logger.info("Background backtest STARTED")
+            results = run_backtest(
+                season=season,
+                interval=interval,
+                max_dates=max_dates,
+                write_to_s3=True,
+            )
+            if "error" in results:
+                logger.error(f"Background backtest FAILED: {results['error']}")
+            else:
+                summary = results.get("summary", {})
+                logger.info(
+                    f"Background backtest COMPLETE: "
+                    f"{summary.get('dates_tested', 0)} dates, "
+                    f"top1 hit rate = {summary.get('top1_hit_rate', 'N/A')}"
+                )
+        except Exception as e:
+            logger.error(f"Background backtest EXCEPTION: {e}")
+
+    thread = threading.Thread(target=_run, daemon=True)
+    thread.start()
+
+    env = os.environ.get("ENVIRONMENT", "production")
+    return {
+        "status": "started",
+        "message": f"Backtest running in background for {season} season (every {interval} days). "
+                   f"Results will be written to S3 when complete.",
+        "s3_location": f"s3://mlb-hit-predictor-{env}-bucket/backtest/{season}/",
+        "check_results": f"Look for summary.csv, daily_results.csv, and full_results.json",
+    }

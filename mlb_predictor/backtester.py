@@ -11,6 +11,7 @@ Pipeline:
 """
 
 import io
+import time
 import logging
 from datetime import datetime, timedelta
 from typing import Optional
@@ -59,6 +60,9 @@ def get_actual_results(date_str: str) -> dict:
             if not box:
                 continue
 
+            # Small delay between boxscore fetches to be nice to the API
+            time.sleep(0.3)
+
             for side in ["home", "away"]:
                 team_data = box.get("teams", {}).get(side, {})
                 players = team_data.get("players", {})
@@ -75,6 +79,9 @@ def get_actual_results(date_str: str) -> dict:
                     hits = batting.get("hits", 0)
 
                     if abs_ > 0:  # Only include players who actually batted
+                        # For doubleheaders: if player already has a hit, keep it
+                        if pid in results and results[pid]["got_hit"] == 1:
+                            continue
                         results[pid] = {
                             "hits": hits,
                             "at_bats": abs_,
@@ -178,12 +185,20 @@ def run_backtest(
     for i, date_str in enumerate(dates):
         logger.info(f"[{i+1}/{len(dates)}] Backtesting {date_str}...")
 
+        # Rate limit: pause between dates to avoid MLB API throttling
+        if i > 0:
+            time.sleep(2)
+
         # Run predictions (don't write each day to S3)
-        predictions = run_daily_predictions(
-            date_str=date_str,
-            season=season,
-            write_to_s3=False,
-        )
+        try:
+            predictions = run_daily_predictions(
+                date_str=date_str,
+                season=season,
+                write_to_s3=False,
+            )
+        except Exception as e:
+            logger.error(f"  Prediction failed for {date_str}: {e}")
+            continue
 
         if predictions.empty:
             logger.warning(f"  No predictions for {date_str}, skipping")
@@ -223,6 +238,8 @@ def run_backtest(
 
                 if "aabbh_ratio" in pick:
                     pick_detail["aabbh_ratio"] = round(float(pick.get("aabbh_ratio", 0)), 2)
+                if "in_optimal_zone" in pick:
+                    pick_detail["in_optimal_zone"] = int(pick.get("in_optimal_zone", 0))
 
                 pick_details.append(pick_detail)
 
@@ -301,10 +318,15 @@ def _write_backtest_to_s3(results: dict, season: int):
     try:
         import os
         import json
+        from datetime import datetime
 
         env = os.environ.get("ENVIRONMENT", "production")
         bucket = f"mlb-hit-predictor-{env}-bucket"
         s3 = boto3.client("s3")
+
+        # Timestamp for unique run identification
+        run_ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        run_prefix = f"backtest/{season}/{run_ts}"
 
         # Summary CSV
         summary_df = pd.DataFrame([results["summary"]])
@@ -312,7 +334,7 @@ def _write_backtest_to_s3(results: dict, season: int):
         summary_df.to_csv(csv_buf, index=False)
         s3.put_object(
             Bucket=bucket,
-            Key=f"backtest/{season}/summary.csv",
+            Key=f"{run_prefix}/summary.csv",
             Body=csv_buf.getvalue(),
             ContentType="text/csv",
         )
@@ -335,7 +357,7 @@ def _write_backtest_to_s3(results: dict, season: int):
         daily_df.to_csv(csv_buf, index=False)
         s3.put_object(
             Bucket=bucket,
-            Key=f"backtest/{season}/daily_results.csv",
+            Key=f"{run_prefix}/daily_results.csv",
             Body=csv_buf.getvalue(),
             ContentType="text/csv",
         )
@@ -343,12 +365,20 @@ def _write_backtest_to_s3(results: dict, season: int):
         # Full JSON (with pick details)
         s3.put_object(
             Bucket=bucket,
-            Key=f"backtest/{season}/full_results.json",
+            Key=f"{run_prefix}/full_results.json",
             Body=json.dumps(results, default=str),
             ContentType="application/json",
         )
 
-        logger.info(f"Backtest results written to s3://{bucket}/backtest/{season}/")
+        # Also write to "latest" for easy access
+        s3.put_object(
+            Bucket=bucket,
+            Key=f"backtest/{season}/latest/summary.csv",
+            Body=pd.DataFrame([results["summary"]]).to_csv(index=False),
+            ContentType="text/csv",
+        )
+
+        logger.info(f"Backtest results written to s3://{bucket}/{run_prefix}/")
 
     except Exception as e:
         logger.error(f"Failed to write backtest to S3: {e}")

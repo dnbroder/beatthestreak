@@ -70,6 +70,7 @@ def root():
             "POST /train/full":   "Train XGBoost model (multi-season)",
             "GET /predict/daily": "Today's hit predictions (ranked)",
             "POST /backtest":     "Run streak simulation",
+            "POST /run-script":   "Execute ad-hoc analysis script from S3",
         },
     }
 
@@ -375,4 +376,46 @@ def backtest_model(
 
     except Exception as e:
         logger.error(f"Backtest failed: {e}")
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+# ---------------------------------------------------------------------------
+# Run S3 Script (for ad-hoc analysis)
+# ---------------------------------------------------------------------------
+@app.post("/run-script")
+def run_s3_script(
+    script: str = Query(default="aabbh_curve.py", description="Script filename in S3 bucket"),
+):
+    """
+    Pull a Python script from S3 and execute it. Returns stdout.
+    """
+    import subprocess
+    import boto3
+
+    logger.info(f"/run-script endpoint hit - script={script}")
+
+    try:
+        bucket = os.environ.get("S3_BUCKET", "mlb-hit-predictor-test-bucket")
+        s3 = boto3.client("s3")
+        local_path = f"/tmp/{script}"
+
+        s3.download_file(bucket, script, local_path)
+        logger.info(f"Downloaded s3://{bucket}/{script} to {local_path}")
+
+        result = subprocess.run(
+            ["python3", local_path],
+            capture_output=True,
+            text=True,
+            timeout=1800,  # 30 min max
+        )
+
+        return {
+            "status": "success" if result.returncode == 0 else "error",
+            "stdout": result.stdout,
+            "stderr": result.stderr,
+            "returncode": result.returncode,
+        }
+
+    except Exception as e:
+        logger.error(f"Script execution failed: {e}")
         return JSONResponse(status_code=500, content={"error": str(e)})

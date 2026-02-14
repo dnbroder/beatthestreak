@@ -24,6 +24,7 @@ from mlb_predictor.feature_engineering import (
 from mlb_predictor.model import train_model, load_model
 from mlb_predictor.daily_predictions import run_daily_predictions
 from mlb_predictor.backtester import run_backtest
+from mlb_predictor.shap_analysis import run_shap_analysis
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -43,7 +44,7 @@ ENVIRONMENT = os.environ.get("ENVIRONMENT", "production")
 
 app = FastAPI(
     title="BeatTheStreak API",
-    version="0.2.0",
+    version="0.3.0",
     description=f"Environment: {ENVIRONMENT}",
 )
 
@@ -57,7 +58,7 @@ async def startup_event():
 def root():
     return {
         "app": "BeatTheStreak",
-        "version": "0.2.0",
+        "version": "0.3.0",
         "environment": ENVIRONMENT,
         "endpoints": {
             "GET /":              "This page",
@@ -71,6 +72,7 @@ def root():
             "GET /predict/daily": "Today's hit predictions (ranked)",
             "POST /backtest":     "Run streak simulation",
             "POST /backtest-async": "Run full-season backtest (background, results to S3)",
+            "POST /shap":         "Run SHAP feature importance analysis",
             "POST /run-script":   "Execute ad-hoc analysis script from S3",
         },
     }
@@ -121,7 +123,7 @@ def trigger_prediction():
 
 
 # ---------------------------------------------------------------------------
-# /test – mock pipeline
+# /test - mock pipeline
 # ---------------------------------------------------------------------------
 MOCK_GAMES = [
     {"game_pk": 99901, "home_team": "New York Yankees", "away_team": "Boston Red Sox",
@@ -339,7 +341,7 @@ def backtest_model(
     write_s3: bool = Query(default=True, description="Write results to S3"),
 ):
     """
-    Run backtest across a season: predict → check actuals → compute hit rates + streaks.
+    Run backtest across a season: predict -> check actuals -> compute hit rates + streaks.
     WARNING: This is a long-running operation. Use max_dates for quick tests.
     """
     logger.info(f"/backtest endpoint hit - season={season}, interval={interval}, max_dates={max_dates}")
@@ -377,6 +379,58 @@ def backtest_model(
 
     except Exception as e:
         logger.error(f"Backtest failed: {e}")
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+# ---------------------------------------------------------------------------
+# SHAP Analysis
+# ---------------------------------------------------------------------------
+@app.post("/shap")
+def shap_analysis(
+    s3_key: str = Query(
+        default=None,
+        description="S3 key for full_results.json (e.g. backtest/2024/20260214_004946/full_results.json)"
+    ),
+    write_s3: bool = Query(default=True, description="Write SHAP results to S3"),
+):
+    """
+    Run SHAP explainability analysis on the trained model.
+
+    If s3_key is provided, loads backtest results and analyzes misses.
+    Otherwise, runs feature importance only.
+
+    Returns:
+      - Global feature importance ranked by SHAP values
+      - Miss analysis (which features drove incorrect predictions)
+      - Hit vs miss comparison
+      - Optimal zone validation
+      - Actionable recommendations
+    """
+    logger.info(f"/shap endpoint hit - s3_key={s3_key}")
+
+    try:
+        results = run_shap_analysis(
+            backtest_json_path=s3_key,
+            write_to_s3=write_s3,
+        )
+
+        if "error" in results:
+            return JSONResponse(status_code=503, content=results)
+
+        return {
+            "status": "success",
+            "global_importance": results.get("global_importance", {}),
+            "miss_analysis_summary": {
+                "total_misses": results.get("miss_analysis", {}).get("total_misses", 0),
+                "most_common_miss_drivers": results.get("miss_analysis", {}).get("most_common_miss_drivers", {}),
+            },
+            "optimal_zone": results.get("optimal_zone_analysis", {}),
+            "recommendations": results.get("recommendations", []),
+            "s3_written": write_s3,
+        }
+
+    except Exception as e:
+        logger.error(f"SHAP analysis failed: {e}")
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 

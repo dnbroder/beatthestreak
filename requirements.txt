@@ -6,3 +6,4 @@ scikit-learn
 xgboost
 boto3
 numpy
+shap

@@ -3,15 +3,22 @@ daily_predictions.py – Build and score daily predictions for Beat the Streak.
 
 Pipeline:
   1. Pull today's (or any date's) scheduled games with starting pitchers
-  2. Get each batter's recent game logs to build features
-  3. Score every batter through the trained model
-  4. Rank by confidence, output top picks
-  5. Write results to S3 for QuickSight
+  2. Get confirmed starting lineups — filter out non-starters
+  3. Get each batter's recent game logs to build features
+  4. Score every batter through the trained model
+  5. Rank by confidence, output top picks
+  6. Write results to S3 for QuickSight
+
+v1.1 Changes:
+  - Lineup pre-check: only score batters confirmed in the starting lineup
+  - Doubleheader handling: detect double-game days, score both games
+  - Early season fallback: use prior-season AABBH when current season < 7 games
 """
 
 import os
 import io
 import logging
+import time
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -39,8 +46,13 @@ ENVIRONMENT = os.environ.get("ENVIRONMENT", "production")
 S3_BUCKET = f"mlb-hit-predictor-{ENVIRONMENT}-bucket"
 
 
+def log(msg):
+    """Print with flush for immediate container log visibility."""
+    print(f"[PREDICT] {msg}", flush=True)
+
+
 # ---------------------------------------------------------------------------
-# Step 1: Get scheduled games for a date
+# Step 1: Get scheduled games for a date (with doubleheader detection)
 # ---------------------------------------------------------------------------
 def get_games_for_date(date_str: str) -> list:
     """
@@ -48,7 +60,8 @@ def get_games_for_date(date_str: str) -> list:
     Args:
         date_str: "YYYY-MM-DD"
     Returns:
-        List of game dicts with teams, venue, starting pitchers
+        List of game dicts with teams, venue, starting pitchers.
+        Doubleheaders will have multiple entries for the same teams.
     """
     logger.info(f"Fetching games for {date_str}...")
 
@@ -65,6 +78,8 @@ def get_games_for_date(date_str: str) -> list:
         return []
 
     games = []
+    team_game_count = {}  # Track games per team for doubleheader detection
+
     for date_entry in data.get("dates", []):
         for game in date_entry.get("games", []):
             status = game.get("status", {}).get("abstractGameState", "")
@@ -72,36 +87,57 @@ def get_games_for_date(date_str: str) -> list:
                 away = game.get("teams", {}).get("away", {})
                 home = game.get("teams", {}).get("home", {})
 
+                home_team = home.get("team", {}).get("name", "")
+                away_team = away.get("team", {}).get("name", "")
+
+                # Track doubleheader game number
+                for team in [home_team, away_team]:
+                    team_game_count[team] = team_game_count.get(team, 0) + 1
+
+                game_number = game.get("gameNumber", 1)
+
                 games.append({
                     "game_pk": game.get("gamePk"),
                     "game_date": date_str,
                     "game_time": game.get("gameDate", ""),
+                    "game_number": game_number,
                     "status": status,
                     "venue_name": game.get("venue", {}).get("name", ""),
-                    "home_team": home.get("team", {}).get("name", ""),
+                    "home_team": home_team,
                     "home_team_id": home.get("team", {}).get("id"),
-                    "away_team": away.get("team", {}).get("name", ""),
+                    "away_team": away_team,
                     "away_team_id": away.get("team", {}).get("id"),
                     "home_pitcher_id": home.get("probablePitcher", {}).get("id"),
                     "home_pitcher_name": home.get("probablePitcher", {}).get("fullName", "TBD"),
                     "away_pitcher_id": away.get("probablePitcher", {}).get("id"),
                     "away_pitcher_name": away.get("probablePitcher", {}).get("fullName", "TBD"),
+                    "is_doubleheader": False,  # Updated below
                 })
+
+    # Mark doubleheader games
+    dh_teams = {team for team, count in team_game_count.items() if count > 1}
+    for game in games:
+        if game["home_team"] in dh_teams or game["away_team"] in dh_teams:
+            game["is_doubleheader"] = True
+
+    if dh_teams:
+        log(f"  Doubleheader detected for: {', '.join(dh_teams)}")
 
     logger.info(f"Found {len(games)} games for {date_str}")
     return games
 
 
 # ---------------------------------------------------------------------------
-# Step 2: Get lineups / rosters for each game
+# Step 2: Get CONFIRMED starting lineups for each game
 # ---------------------------------------------------------------------------
-def get_game_lineups(game_pk: int) -> list:
+def get_confirmed_starters(game_pk: int) -> list:
     """
-    Get batting lineups for a game. If lineups aren't posted yet,
-    fall back to active roster.
+    Get confirmed starting lineup for a game.
+    Only returns batters who are in the actual batting order.
+    This filters out bench players, pinch hitters, etc.
+
     Returns list of dicts with player_id, name, team, is_home, lineup_pos.
     """
-    # Try boxscore for lineups (works for live/final games)
     data = _safe_get(f"{BASE_URL}/game/{game_pk}/boxscore")
 
     batters = []
@@ -120,6 +156,7 @@ def get_game_lineups(game_pk: int) -> list:
                     person = player_data.get("person", {})
                     position = player_data.get("position", {})
 
+                    # Skip pitchers in the batting order (NL/interleague)
                     if position.get("abbreviation") == "P":
                         continue
 
@@ -129,11 +166,14 @@ def get_game_lineups(game_pk: int) -> list:
                         "team": team_name,
                         "is_home": is_home,
                         "lineup_position": pos_idx + 1,
+                        "is_confirmed_starter": True,
                     })
 
-    # If no lineups from boxscore, try roster
+    # If no batting order available, fall back to roster but mark as unconfirmed
     if not batters:
         batters = _get_roster_batters(game_pk)
+        for b in batters:
+            b["is_confirmed_starter"] = False
 
     return batters
 
@@ -144,7 +184,6 @@ def _get_roster_batters(game_pk: int) -> list:
     if not data:
         return []
 
-    # For preview games, pull team rosters instead
     game_data = _safe_get(f"{BASE_URL}/schedule", params={"gamePk": game_pk})
     if not game_data:
         return []
@@ -179,7 +218,7 @@ def _get_roster_batters(game_pk: int) -> list:
 
 
 # ---------------------------------------------------------------------------
-# Step 3: Build features for each batter
+# Step 3: Build features for each batter (with prior-season fallback)
 # ---------------------------------------------------------------------------
 def build_batter_features(
     player_id: int,
@@ -189,6 +228,9 @@ def build_batter_features(
     """
     Build feature vector for a single batter based on their recent history.
     Pulls game log up to (but not including) game_date.
+
+    If current season has < 7 games, falls back to prior season stats
+    for AABBH baseline (early-season fix).
     """
     data = _safe_get(
         f"{BASE_URL}/people/{player_id}/stats",
@@ -217,8 +259,39 @@ def build_batter_features(
                 "plate_appearances": stat.get("plateAppearances", 0),
             })
 
-    if len(games) < 7:
-        return {}  # Not enough history
+    num_current_games = len(games)
+
+    # ----- EARLY SEASON FALLBACK -----
+    # If fewer than 7 current-season games, try to get prior season stats
+    # to seed AABBH baseline
+    prior_aabbh = None
+    if num_current_games < 7 and season > 2000:
+        prior_data = _safe_get(
+            f"{BASE_URL}/people/{player_id}/stats",
+            params={"stats": "gameLog", "group": "hitting", "season": season - 1}
+        )
+        if prior_data:
+            prior_games = []
+            for stat_group in prior_data.get("stats", []):
+                for split in stat_group.get("splits", []):
+                    stat = split.get("stat", {})
+                    prior_games.append({
+                        "at_bats": stat.get("atBats", 0),
+                        "hits": stat.get("hits", 0),
+                    })
+
+            if len(prior_games) >= 30:
+                # Use last 30 games of prior season for AABBH seed
+                prior_df = pd.DataFrame(prior_games).tail(30)
+                prior_abs = prior_df["at_bats"].sum()
+                prior_hits = prior_df["hits"].sum()
+                if prior_hits > 0:
+                    prior_aabbh = prior_abs / prior_hits
+
+    # Need at least 3 games (relaxed from 7 when we have prior-season data)
+    min_games = 3 if prior_aabbh is not None else 7
+    if num_current_games < min_games:
+        return {}
 
     df = pd.DataFrame(games).sort_values("date")
 
@@ -244,13 +317,25 @@ def build_batter_features(
     games_between_hits = num_games / (hitless_games + 1)
 
     # AABBH: Average At Bats Between Hits (secret sauce v2)
-    aabbh = total_abs / max(total_hits, 1)
+    if total_hits > 0:
+        aabbh = total_abs / total_hits
+    elif prior_aabbh is not None:
+        # No hits yet this season — use prior season AABBH
+        aabbh = prior_aabbh
+    else:
+        aabbh = total_abs  # Fallback: all ABs, no hits
+
+    # If we have prior-season AABBH and few current games, blend them
+    if prior_aabbh is not None and num_current_games < 15 and total_hits > 0:
+        current_aabbh = total_abs / total_hits
+        # Weight: more current-season games = more weight on current data
+        blend_weight = num_current_games / 15.0
+        aabbh = (current_aabbh * blend_weight) + (prior_aabbh * (1 - blend_weight))
 
     # Current hitless AB streak (counting backwards from most recent game)
     current_hitless_abs = 0
     for _, row in df.iloc[::-1].iterrows():
         if row["hits"] > 0:
-            # This game had hits — count ABs after the last hit
             current_hitless_abs += int(row["at_bats"] - row["hits"])
             break
         else:
@@ -300,7 +385,7 @@ def run_daily_predictions(
     write_to_s3: bool = True,
 ) -> pd.DataFrame:
     """
-    Full pipeline: games → lineups → features → model → ranked picks → S3.
+    Full pipeline: games → confirmed lineups → features → model → ranked picks → S3.
 
     Args:
         date_str: "YYYY-MM-DD" (defaults to today)
@@ -323,15 +408,21 @@ def run_daily_predictions(
         logger.error("No trained model found. Run /train first.")
         return pd.DataFrame()
 
-    # Step 1: Get games
+    # Step 1: Get games (with doubleheader detection)
     games = get_games_for_date(date_str)
     if not games:
         logger.warning(f"No games found for {date_str}")
         return pd.DataFrame()
 
+    # Sort games by time so doubleheader game 1 is processed first
+    games.sort(key=lambda g: (g.get("game_time", ""), g.get("game_number", 1)))
+
     # Cache for pitcher stats and player info
     pitcher_cache = {}
     player_info_cache = {}
+
+    # Track players already scored (for doubleheader dedup)
+    scored_players = set()
 
     all_predictions = []
 
@@ -339,18 +430,31 @@ def run_daily_predictions(
         game_pk = game["game_pk"]
         venue = game["venue_name"]
         park_factor = get_park_factor(venue)
+        game_num = game.get("game_number", 1)
 
-        logger.info(f"Processing: {game['away_team']} @ {game['home_team']} ({venue})")
+        dh_label = f" (Game {game_num})" if game.get("is_doubleheader") else ""
+        logger.info(f"Processing: {game['away_team']} @ {game['home_team']} ({venue}){dh_label}")
 
-        # Step 2: Get lineups
-        batters = get_game_lineups(game_pk)
+        # Step 2: Get CONFIRMED starting lineups only
+        batters = get_confirmed_starters(game_pk)
         if not batters:
             logger.warning(f"No lineup data for game {game_pk}")
             continue
 
+        # Count confirmed vs unconfirmed
+        confirmed = sum(1 for b in batters if b.get("is_confirmed_starter", False))
+        logger.info(f"  Lineup: {confirmed} confirmed starters, {len(batters)} total")
+
         for batter in batters:
             pid = batter["player_id"]
             is_home = batter["is_home"]
+
+            # Doubleheader dedup: skip if already scored for game 1
+            # (In BTS you can pick a player for either game, so we keep the
+            # first game's prediction to avoid counting twice)
+            if pid in scored_players and game.get("is_doubleheader"):
+                continue
+            scored_players.add(pid)
 
             # Determine opposing pitcher
             if is_home:
@@ -362,7 +466,7 @@ def run_daily_predictions(
                 opp_pitcher_name = game["home_pitcher_name"]
                 opponent = game["home_team"]
 
-            # Step 3: Build batter features
+            # Step 3: Build batter features (with prior-season fallback)
             features = build_batter_features(pid, season, date_str)
             if not features:
                 continue
@@ -418,6 +522,7 @@ def run_daily_predictions(
                 "venue": venue,
                 "bat_side": bat_side,
                 "lineup_position": batter.get("lineup_position", 0),
+                "is_confirmed_starter": batter.get("is_confirmed_starter", False),
                 "opp_pitcher": opp_pitcher_name,
                 "opp_pitcher_hand": opp_hand,
                 "date": date_str,
@@ -455,8 +560,9 @@ def run_daily_predictions(
     if len(pred_df) > 0:
         logger.info("=== TOP 10 PICKS ===")
         for _, row in pred_df.head(10).iterrows():
+            starter_tag = "S" if row.get("is_confirmed_starter", False) else "?"
             logger.info(
-                f"  #{int(row['rank'])} {row['player_name']} ({row['team']}) "
+                f"  #{int(row['rank'])} [{starter_tag}] {row['player_name']} ({row['team']}) "
                 f"vs {row['opp_pitcher']} ({row['opp_pitcher_hand']}) "
                 f"@ {row['venue']} — {row['confidence_pct']}%"
             )

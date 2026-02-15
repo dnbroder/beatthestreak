@@ -5,9 +5,9 @@
 An XGBoost-based machine learning system that predicts whether MLB batters will record a hit in a given game. Built for MLB's Beat the Streak contest and prediction market applications.
 
 **Out-of-sample validation (2024 season, never seen during training):**
-- **76.7% top-1 accuracy** (69/90 game dates)
-- 13-game prediction streak
-- +11.7 percentage points over MLB baseline (65%)
+- **78.9% top-1 accuracy** (71/90 game dates)
+- **21-game prediction streak**
+- +13.9 percentage points over MLB baseline (65%)
 
 ---
 
@@ -50,7 +50,7 @@ Resources:
             Condition:
               StringEquals:
                 token.actions.githubusercontent.com:aud: sts.amazonaws.com
-                token.actions.githubusercontent.com:sub: repo:dnbroder/beatthestreak:ref:refs/heads/main
+                token.actions.githubusercontent.com:sub: repo:{YourGitHubAccountUsernameGoesHere}/{YourRepositoryNameGoesHere}:ref:refs/heads/main
       Policies:
         - PolicyName: CICDPipelinePolicy
           PolicyDocument:
@@ -129,10 +129,11 @@ The infrastructure is defined in a single CloudFormation template that provision
 | **ECS Task Definition** | Container config: image, CPU/memory, environment variables, logging |
 | **ECS Service** | Maintains desired task count, health checks, rolling deploys |
 | **S3 Bucket** | Stores model artifacts, backtest results, daily predictions, tuning logs |
-| **IAM Roles** | Task execution role (ECR pull, CloudWatch), task role (S3 read/write) |
-| **CloudWatch Log Group** | Container stdout/stderr for monitoring |
+| **IAM Roles** | Task execution role (ECR pull, CloudWatch), task role (S3 read/write), Lambda role |
+| **CloudWatch Log Group** | Container stdout/stderr and Lambda logs for monitoring |
 | **VPC / Security Group** | Network config with public IP for API access |
-| **EventBridge Rule** | Daily trigger for automated predictions (cron schedule) |
+| **EventBridge Rules** | Two daily triggers for automated predictions (production only) |
+| **Lambda Function** | Discovers Fargate task IP, checks MLB schedule, triggers `/predict/daily` |
 
 ### Environment Strategy
 
@@ -216,14 +217,15 @@ curl -s http://$PUBLIC_IP:8080/health
 │  ┌──────────────┐  ┌──────────────────────────────────────────┐     │
 │  │  EventBridge  │  │              S3 Bucket                   │     │
 │  │              │  │                                          │     │
-│  │  Daily cron  │  │  predictions/{date}/top10_picks.csv      │     │
-│  │  (9am ET)    │──│  predictions/{date}/all_predictions.csv  │     │
-│  │              │  │  predictions/latest/                     │     │
-│  └──────────────┘  │  backtest/{season}/{timestamp}/          │     │
-│                    │  tuning/{timestamp}/                     │     │
-│                    │  analysis/shap/{timestamp}/              │     │
-│                    │  models/hit_predictor.pkl                │     │
-│                    └──────────────────┬───────────────────────┘     │
+│  │  Morning     │  │  predictions/{date}/top10_picks.csv      │     │
+│  │  (11:30 ET)  │──│  predictions/{date}/all_predictions.csv  │     │
+│  │  Evening     │  │  predictions/latest/                     │     │
+│  │  (5:00 ET)   │  │  backtest/{season}/{timestamp}/          │     │
+│  │      │       │  │  tuning/{timestamp}/                     │     │
+│  │      ▼       │  │  analysis/shap/{timestamp}/              │     │
+│  │   Lambda     │  │  models/hit_predictor.pkl                │     │
+│  │  (trigger)   │  │  lambda/prediction_trigger.zip           │     │
+│  └──────────────┘  └──────────────────┬───────────────────────┘     │
 │                                       │                             │
 │                                       ▼                             │
 │                    ┌──────────────────────────────────────────┐     │
@@ -250,7 +252,7 @@ curl -s http://$PUBLIC_IP:8080/health
 ### Module Dependency Map
 
 ```
-main.py (FastAPI entrypoint, v0.4.0)
+main.py (FastAPI entrypoint, v1.2)
 ├── historical_data.py      ← MLB Stats API data pulls, schedule enrichment
 │   └── (MLB Stats API)        pitcher ERA, WHIP, K/9, park factors per game
 ├── feature_engineering.py  ← 26-feature pipeline, rolling stats, AABBH
@@ -259,7 +261,9 @@ main.py (FastAPI entrypoint, v0.4.0)
 ├── daily_predictions.py    ← Live prediction pipeline (lineups → features → rank)
 ├── backtester.py           ← Historical streak simulation, S3 result storage
 ├── hyperparameter_tuning.py← RandomizedSearchCV optimization
-└── shap_analysis.py        ← SHAP explainability, miss analysis
+├── shap_analysis.py        ← SHAP explainability, miss analysis
+└── lambda/
+    └── prediction_trigger.py ← EventBridge → Lambda → Fargate trigger (prod only)
 ```
 
 ### Data Flow (Training)
@@ -401,7 +405,7 @@ The `/predict/daily` endpoint produces a ranked list of every confirmed starter,
 
 ### How to Use the Picks
 
-For **Beat the Streak**: Pick the #1 ranked player each day. The model achieved a 76.7% hit rate on top-1 picks in out-of-sample testing, with a longest streak of 13 games.
+For **Beat the Streak**: Pick the #1 ranked player each day. The model achieved a 78.9% hit rate on top-1 picks in out-of-sample testing (2024 season), with a longest streak of 21 games.
 
 For **prediction markets** (Kalshi, etc.): Use the confidence score as a probability estimate. The model is calibrated, meaning an 80% confidence prediction should result in a hit approximately 80% of the time.
 
@@ -429,6 +433,8 @@ s3://mlb-hit-predictor-{env}-bucket/
 │       └── shap_analysis.json       (feature importance, miss analysis)
 └── models/
     └── hit_predictor.pkl            (trained model artifact)
+├── lambda/
+│   └── prediction_trigger.zip       (Lambda deployment package)
 ```
 
 ### QuickSight Dashboard
@@ -511,13 +517,20 @@ aws s3 ls s3://mlb-hit-predictor-test-bucket/backtest/2024/ --recursive | sort |
 curl -X POST "http://$PUBLIC_IP:8080/train/full?start_year=2021&end_year=2023"
 ```
 
-### EventBridge Schedule
+### EventBridge Schedule (Production Only)
 
-The EventBridge rule triggers daily predictions automatically during the MLB season:
+Automated daily predictions are triggered via EventBridge → Lambda → Fargate. The Lambda function discovers the running task's public IP, checks the MLB schedule for games, and hits `/predict/daily`. On off-days, it writes a no-games marker to S3 so QuickSight shows current status instead of stale data.
 
-- **Schedule**: Daily at 9:00 AM ET (adjustable)
-- **Target**: ECS task invocation → `/predict/daily` endpoint
-- **Output**: Results written to S3, QuickSight dashboard auto-refreshes
+Two triggers run during the MLB season (March–October):
+
+| Trigger | Schedule (ET) | Purpose |
+|---------|--------------|---------|
+| **Morning** | 11:30 AM | Day game lineups — lock early picks or evaluate the full slate |
+| **Evening** | 5:00 PM | Night game lineups — updated pool with confirmed starters |
+
+Both triggers are gated behind `EnableScheduledPredictions=true` and `Environment=production`. The test environment never creates scheduling resources.
+
+**BTS Strategy:** Each prediction run scores every confirmed starter independently. Confidence scores are per-batter probabilities, not relative rankings — so a partial pool (morning) and full pool (evening) produce the same scores for the same players. Pick the highest confidence player from whichever run has the most confirmed lineups.
 
 ### Setting the Public IP
 
@@ -544,12 +557,12 @@ echo $PUBLIC_IP
 
 ## Version History
 
-| Version | Date | Changes |
-|---------|------|---------|
-| v0.1.0 | Jan 2026 | Initial model with basic batting features |
-| v0.2.0 | Feb 2026 | AABBH features, optimal zone discovery |
-| v0.3.0 | Feb 2026 | SHAP analysis, async backtest, S3 integration |
-| v0.4.0 | Feb 2026 | Hyperparameter tuning endpoint |
-| v1.0 | Feb 2026 | Baseline: 78.4% in-sample (2021-2023) |
-| v1.1 | Feb 2026 | Lineup pre-check, doubleheader handling, prior-season fallback. 78.9% in-sample, 76.7% OOS |
-| v1.2 | Feb 2026 | ERA tier features (batter performance by pitcher quality tier) |
+| Version | Date | Changes | OOS Result |
+|---------|------|---------|------------|
+| v0.1.0 | 2026-01-15 | Initial model with basic batting features | — |
+| v0.2.0 | 2026-02-01 | AABBH features, optimal zone discovery | — |
+| v0.3.0 | 2026-02-05 | SHAP analysis, async backtest, S3 integration | — |
+| v0.4.0 | 2026-02-10 | Hyperparameter tuning endpoint | — |
+| v1.0.0 | 2026-02-12 | Baseline: 23 features, default XGBoost params | 78.4% in-sample |
+| v1.1.0 | 2026-02-14 | Lineup pre-check, doubleheader handling, prior-season AABBH fallback | **76.7%** (69/90), 13-game streak |
+| v1.2.0 | 2026-02-15 | ERA tier features (26 features), pickle save bug fix, calibration fix, EventBridge + Lambda automation, CI/CD hardcoded values removed, deploy workflow cleanup | **78.9%** (71/90), **21-game streak** |

@@ -134,15 +134,14 @@ def train_model(
         min_child_weight=5,
         scale_pos_weight=scale_pos_weight,
         eval_metric="logloss",
-        early_stopping_rounds=50,
         random_state=42,
-        use_label_encoder=False,
     )
 
     model.fit(
         X_train, y_train,
         sample_weight=w_train,
         eval_set=[(X_test, y_test)],
+        early_stopping_rounds=50,
         verbose=False,
     )
 

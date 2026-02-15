@@ -8,9 +8,10 @@ Parameters:
     AllowedValues:
       - production
       - test
-  ImageUrl:
+  ImageTag:
     Type: String
-    Default: 033896355668.dkr.ecr.us-east-1.amazonaws.com/beatthestreak:test
+    Default: latest
+    Description: Docker image tag (set by CI/CD pipeline)
   ContainerPort:
     Type: Number
     Default: 8080
@@ -18,8 +19,25 @@ Parameters:
     Type: String
     Description: Dummy value to force TaskDefinition redeployment
     Default: init
+  EnableScheduledPredictions:
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: Enable daily EventBridge triggers (production only)
+
+Conditions:
+  IsProduction: !Equals [!Ref Environment, production]
+  ScheduleEnabled: !And
+    - !Equals [!Ref EnableScheduledPredictions, "true"]
+    - !Condition IsProduction
 
 Resources:
+
+  # ===========================================================================
+  # NETWORKING
+  # ===========================================================================
 
   VPC:
     Type: AWS::EC2::VPC
@@ -77,6 +95,10 @@ Resources:
     Properties:
       SubnetId: !Ref PublicSubnet2
       RouteTableId: !Ref RouteTable
+
+  # ===========================================================================
+  # ECS CLUSTER + SERVICE
+  # ===========================================================================
 
   ECSCluster:
     Type: AWS::ECS::Cluster
@@ -148,7 +170,7 @@ Resources:
       TaskRoleArn: !GetAtt TaskRole.Arn
       ContainerDefinitions:
         - Name: app
-          Image: !Ref ImageUrl
+          Image: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/beatthestreak:${ImageTag}
           PortMappings:
             - ContainerPort: !Ref ContainerPort
           Essential: true
@@ -206,6 +228,131 @@ Resources:
             - !Ref ServiceSecurityGroup
       TaskDefinition: !Ref TaskDefinition
 
+  # ===========================================================================
+  # EVENTBRIDGE + LAMBDA (production only, when enabled)
+  # ===========================================================================
+
+  # Lambda function that discovers the Fargate task IP and hits /predict/daily
+  PredictionTriggerFunction:
+    Type: AWS::Lambda::Function
+    Condition: ScheduleEnabled
+    Properties:
+      FunctionName: !Sub ${Environment}-prediction-trigger
+      Runtime: python3.12
+      Handler: prediction_trigger.handler
+      Timeout: 900
+      MemorySize: 128
+      Role: !GetAtt PredictionTriggerRole.Arn
+      Environment:
+        Variables:
+          ECS_CLUSTER: !Sub ${Environment}-cluster
+          CONTAINER_PORT: !Ref ContainerPort
+          TRIGGER_TYPE: "scheduled"
+          ENVIRONMENT: !Ref Environment
+      Code:
+        S3Bucket: !Sub mlb-hit-predictor-${Environment}-bucket
+        S3Key: lambda/prediction_trigger.zip
+
+  # IAM role for the Lambda — needs ECS + EC2 read access
+  PredictionTriggerRole:
+    Type: AWS::IAM::Role
+    Condition: ScheduleEnabled
+    Properties:
+      RoleName: !Sub ${Environment}-prediction-trigger-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: PredictionTriggerPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              # CloudWatch Logs for Lambda
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: "arn:aws:logs:*:*:*"
+              # ECS read access to discover task IP
+              - Effect: Allow
+                Action:
+                  - ecs:ListTasks
+                  - ecs:DescribeTasks
+                Resource: "*"
+              # EC2 read access to get public IP from ENI
+              - Effect: Allow
+                Action:
+                  - ec2:DescribeNetworkInterfaces
+                Resource: "*"
+              # S3 write access for no-games marker
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource: !Sub "arn:aws:s3:::mlb-hit-predictor-${Environment}-bucket/predictions/*"
+
+  # Lambda log group
+  PredictionTriggerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Condition: ScheduleEnabled
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${Environment}-prediction-trigger
+      RetentionInDays: 14
+
+  # --------------------------------------------------------------------------
+  # Morning trigger: 11:30 AM ET (16:30 UTC) — day game lineups
+  # --------------------------------------------------------------------------
+  MorningPredictionRule:
+    Type: AWS::Events::Rule
+    Condition: ScheduleEnabled
+    Properties:
+      Name: !Sub ${Environment}-morning-predictions
+      Description: "Morning prediction run - day game lineups (11:30 AM ET)"
+      ScheduleExpression: "cron(30 16 * 3-10 ? *)"
+      State: ENABLED
+      Targets:
+        - Id: MorningPredictionTarget
+          Arn: !GetAtt PredictionTriggerFunction.Arn
+          Input: '{"trigger": "morning"}'
+
+  MorningPredictionPermission:
+    Type: AWS::Lambda::Permission
+    Condition: ScheduleEnabled
+    Properties:
+      FunctionName: !Ref PredictionTriggerFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt MorningPredictionRule.Arn
+
+  # --------------------------------------------------------------------------
+  # Evening trigger: 5:00 PM ET (22:00 UTC) — night game lineups
+  # --------------------------------------------------------------------------
+  EveningPredictionRule:
+    Type: AWS::Events::Rule
+    Condition: ScheduleEnabled
+    Properties:
+      Name: !Sub ${Environment}-evening-predictions
+      Description: "Evening prediction run - night game lineups (5:00 PM ET)"
+      ScheduleExpression: "cron(0 22 * 3-10 ? *)"
+      State: ENABLED
+      Targets:
+        - Id: EveningPredictionTarget
+          Arn: !GetAtt PredictionTriggerFunction.Arn
+          Input: '{"trigger": "evening"}'
+
+  EveningPredictionPermission:
+    Type: AWS::Lambda::Permission
+    Condition: ScheduleEnabled
+    Properties:
+      FunctionName: !Ref PredictionTriggerFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt EveningPredictionRule.Arn
+
 Outputs:
   ClusterName:
     Value: !Ref ECSCluster
@@ -216,3 +363,15 @@ Outputs:
     Description: CloudWatch log group - check /ecs/<environment> in CloudWatch
   Environment:
     Value: !Ref Environment
+  MorningSchedule:
+    Condition: ScheduleEnabled
+    Value: "11:30 AM ET daily (March-October)"
+    Description: Morning prediction trigger for day game lineups
+  EveningSchedule:
+    Condition: ScheduleEnabled
+    Value: "5:00 PM ET daily (March-October)"
+    Description: Evening prediction trigger for night game lineups
+  PredictionTriggerLambda:
+    Condition: ScheduleEnabled
+    Value: !Ref PredictionTriggerFunction
+    Description: Lambda function that triggers daily predictions

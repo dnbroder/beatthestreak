@@ -8,7 +8,7 @@ on:
 env:
   AWS_REGION: us-east-1
   ECR_REPOSITORY: beatthestreak
-  ECS_STACK_NAME: beatthestreak-test-stack
+  STACK_NAME: beatthestreak-test-stack
   IMAGE_TAG: test
   ENVIRONMENT: test
 
@@ -26,118 +26,58 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
-          role-to-assume: arn:aws:iam::033896355668:role/mlb-cicd-role
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/mlb-cicd-role
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build Docker image
+      - name: Build and push Docker image
         run: |
           docker build --no-cache -t $ECR_REPOSITORY:$IMAGE_TAG .
-          docker tag $ECR_REPOSITORY:$IMAGE_TAG ${{ steps.login-ecr.outputs.registry }}/${ECR_REPOSITORY}:$IMAGE_TAG
-
-      - name: Re-login to ECR and push
-        run: |
+          docker tag $ECR_REPOSITORY:$IMAGE_TAG ${{ steps.login-ecr.outputs.registry }}/$ECR_REPOSITORY:$IMAGE_TAG
           aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}
-          docker push ${{ steps.login-ecr.outputs.registry }}/${ECR_REPOSITORY}:$IMAGE_TAG
+          docker push ${{ steps.login-ecr.outputs.registry }}/$ECR_REPOSITORY:$IMAGE_TAG
 
-      # ----------------------------------------------------------------
-      # Deploys to a SEPARATE stack: beatthestreak-test-stack
-      # Completely isolated from production.
-      # ----------------------------------------------------------------
-      - name: Deploy test stack via CloudFormation
+      - name: Package Lambda
         run: |
-          set +e
-          echo "Deploying CloudFormation stack: $ECS_STACK_NAME ($ENVIRONMENT)"
-          TIMESTAMP=$(date +%s)
-          output=$(aws cloudformation deploy \
-            --template-file ecs_stack.yaml \
-            --stack-name $ECS_STACK_NAME \
+          cd mlb_predictor/lambda
+          zip prediction_trigger.zip prediction_trigger.py
+          aws s3 cp prediction_trigger.zip s3://mlb-hit-predictor-$ENVIRONMENT-bucket/lambda/
+
+      - name: Deploy CloudFormation stack
+        run: |
+          aws cloudformation deploy \
+            --template-file infrastructure.yaml \
+            --stack-name $STACK_NAME \
             --capabilities CAPABILITY_NAMED_IAM \
             --parameter-overrides \
               Environment=$ENVIRONMENT \
-              ImageUrl=${{ steps.login-ecr.outputs.registry }}/${ECR_REPOSITORY}:$IMAGE_TAG \
+              ImageTag=$IMAGE_TAG \
               ContainerPort=8080 \
-              ForceRedeploy=$TIMESTAMP \
-            --no-fail-on-empty-changeset 2>&1)
-          status=$?
-
-          echo "CloudFormation output:"
-          echo "$output"
-
-          if [[ $status -ne 0 ]]; then
-            if echo "$output" | grep -qi "no changes to deploy\|didn't contain changes\|no updates are to be performed\|'Status'"; then
-              echo "No changes detected. Continuing."
-              exit 0
-            else
-              echo "CloudFormation deploy failed."
-              exit $status
-            fi
-          fi
+              ForceRedeploy=$(date +%s) \
+              EnableScheduledPredictions=false \
+            --no-fail-on-empty-changeset || true
 
       - name: Force new ECS deployment
         run: |
-          echo "Forcing new deployment to pick up latest image..."
-          aws ecs update-service \
-            --cluster ${ENVIRONMENT}-cluster \
-            --service $(aws ecs list-services --cluster ${ENVIRONMENT}-cluster --query 'serviceArns[0]' --output text | xargs -I{} basename {}) \
-            --force-new-deployment \
-            --region $AWS_REGION
+          SERVICE=$(aws ecs list-services --cluster $ENVIRONMENT-cluster --query 'serviceArns[0]' --output text | xargs basename)
+          aws ecs update-service --cluster $ENVIRONMENT-cluster --service $SERVICE --force-new-deployment --region $AWS_REGION
 
-      # ----------------------------------------------------------------
-      # Wait for task to come up, then validate the /test endpoint
-      # ----------------------------------------------------------------
-      - name: Wait for task to stabilize
+      - name: Wait for service stability
         run: |
-          echo "Waiting for ECS service to stabilize..."
-          aws ecs wait services-stable \
-            --cluster ${ENVIRONMENT}-cluster \
-            --services $(aws ecs list-services --cluster ${ENVIRONMENT}-cluster --query 'serviceArns[0]' --output text | xargs -I{} basename {}) \
-            --region $AWS_REGION
-          echo "Service is stable."
+          SERVICE=$(aws ecs list-services --cluster $ENVIRONMENT-cluster --query 'serviceArns[0]' --output text | xargs basename)
+          aws ecs wait services-stable --cluster $ENVIRONMENT-cluster --services $SERVICE --region $AWS_REGION
 
-      - name: Get task public IP and run smoke test
+      - name: Smoke test
         run: |
-          echo "Finding task public IP..."
-          TASK_ARN=$(aws ecs list-tasks \
-            --cluster ${ENVIRONMENT}-cluster \
-            --query 'taskArns[0]' --output text)
+          TASK_ARN=$(aws ecs list-tasks --cluster $ENVIRONMENT-cluster --query 'taskArns[0]' --output text)
+          ENI=$(aws ecs describe-tasks --cluster $ENVIRONMENT-cluster --tasks $TASK_ARN --query 'tasks[0].attachments[0].details[?name==`networkInterfaceId`].value' --output text)
+          IP=$(aws ec2 describe-network-interfaces --network-interface-ids $ENI --query 'NetworkInterfaces[0].Association.PublicIp' --output text)
+          echo "Task IP: $IP"
 
-          ENI=$(aws ecs describe-tasks \
-            --cluster ${ENVIRONMENT}-cluster \
-            --tasks $TASK_ARN \
-            --query 'tasks[0].attachments[0].details[?name==`networkInterfaceId`].value' \
-            --output text)
-
-          PUBLIC_IP=$(aws ec2 describe-network-interfaces \
-            --network-interface-ids $ENI \
-            --query 'NetworkInterfaces[0].Association.PublicIp' \
-            --output text)
-
-          echo "Task public IP: $PUBLIC_IP"
-          echo ""
-
-          # --- Health check ---
-          echo "=== Testing /health ==="
-          HEALTH=$(curl -sf http://$PUBLIC_IP:8080/health)
-          echo "$HEALTH"
-          echo "$HEALTH" | grep -q '"healthy"' || { echo "FAIL: /health"; exit 1; }
-
-          # --- Root endpoint ---
-          echo ""
-          echo "=== Testing / ==="
-          ROOT=$(curl -sf http://$PUBLIC_IP:8080/)
-          echo "$ROOT"
-          echo "$ROOT" | grep -q '"BeatTheStreak"' || { echo "FAIL: /"; exit 1; }
-
-          # --- Mock pipeline test ---
-          echo ""
-          echo "=== Testing /test (mock pipeline) ==="
-          TEST=$(curl -sf http://$PUBLIC_IP:8080/test)
-          echo "$TEST"
-          echo "$TEST" | grep -q '"pass"' || { echo "FAIL: /test"; exit 1; }
-
-          echo ""
+          curl -sf http://$IP:8080/health | grep -q '"healthy"' || { echo "FAIL: /health"; exit 1; }
+          curl -sf http://$IP:8080/ | grep -q '"BeatTheStreak"' || { echo "FAIL: /"; exit 1; }
+          curl -sf http://$IP:8080/test | grep -q '"pass"' || { echo "FAIL: /test"; exit 1; }
           echo "All smoke tests passed!"

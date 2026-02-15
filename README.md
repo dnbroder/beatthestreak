@@ -50,7 +50,7 @@ Resources:
             Condition:
               StringEquals:
                 token.actions.githubusercontent.com:aud: sts.amazonaws.com
-                token.actions.githubusercontent.com:sub: repo:{YourGitHubAccountUsernameGoesHere}/{YourRepositoryNameGoesHere}:ref:refs/heads/main
+                token.actions.githubusercontent.com:sub: repo:{YourGitHubAccountUsernameGoesHere}/{YourGitHubRepositoryNameForThisApplicationGoesHere}:ref:refs/heads/main
       Policies:
         - PolicyName: CICDPipelinePolicy
           PolicyDocument:

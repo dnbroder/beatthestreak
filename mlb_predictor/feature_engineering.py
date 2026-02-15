@@ -20,6 +20,11 @@ Features:
     - aabbh_ratio: current_hitless_abs / aabbh (overdue signal)
     - in_optimal_zone: 1 if aabbh_ratio is in the 0.5-1.0 sweet spot (81.8% hit rate)
 
+  ERA TIER (v1.2):
+    - batter_hit_rate_vs_era_tier: hit rate vs today's pitcher's ERA tier
+    - batter_ab_vs_era_tier: sample size for that tier
+    - era_tier_delta: tier-specific rate minus overall rate (specialist signal)
+
   PITCHER:
     - pitcher_era: Opposing starter's season ERA
     - pitcher_whip: Opposing starter's WHIP
@@ -201,6 +206,81 @@ def _current_hit_streak(group: pd.DataFrame) -> pd.Series:
 
 
 # ---------------------------------------------------------------------------
+# ERA Tier features (v1.2)
+# ---------------------------------------------------------------------------
+def _era_tier_features_for_group(group: pd.DataFrame) -> pd.DataFrame:
+    """
+    Compute ERA tier features for a player-season group.
+
+    For each game, uses only PRIOR games to compute the batter's hit rate
+    against the ERA tier of the current game's opposing pitcher.
+    No data leakage — strictly lookback.
+
+    Requires 'pitcher_era' column in the group (opposing pitcher ERA,
+    already present from historical_data.py enrichment).
+    """
+    from mlb_predictor.era_tier_features import classify_era_tier
+
+    hit_rates = []
+    ab_counts = []
+    deltas = []
+
+    for i in range(len(group)):
+        if i < 3:
+            # Not enough prior games for meaningful tier stats
+            hit_rates.append(0.0)
+            ab_counts.append(0)
+            deltas.append(0.0)
+            continue
+
+        # Prior games only (no leakage)
+        prior = group.iloc[:i]
+
+        # Current game's opposing pitcher ERA
+        opp_era = group.iloc[i].get("pitcher_era")
+        if opp_era is None or (isinstance(opp_era, float) and np.isnan(opp_era)):
+            hit_rates.append(0.0)
+            ab_counts.append(0)
+            deltas.append(0.0)
+            continue
+
+        target_tier = classify_era_tier(opp_era)
+
+        # Classify prior games' opposing pitchers into tiers
+        prior_tiers = prior["pitcher_era"].apply(
+            lambda x: classify_era_tier(x) if pd.notna(x) else "average"
+        )
+
+        # Overall stats from prior games
+        total_abs = prior["at_bats"].sum()
+        total_hits = prior["hits"].sum()
+        overall_rate = total_hits / max(total_abs, 1)
+
+        # Tier-specific stats from prior games
+        tier_mask = prior_tiers == target_tier
+        tier_abs = prior.loc[tier_mask, "at_bats"].sum()
+        tier_hits = prior.loc[tier_mask, "hits"].sum()
+
+        if tier_abs > 0:
+            tier_rate = tier_hits / tier_abs
+            delta = tier_rate - overall_rate
+        else:
+            # No ABs against this tier yet — fall back to overall
+            tier_rate = overall_rate
+            delta = 0.0
+
+        hit_rates.append(round(tier_rate, 4))
+        ab_counts.append(int(tier_abs))
+        deltas.append(round(delta, 4))
+
+    return pd.DataFrame({
+        "batter_hit_rate_vs_era_tier": hit_rates,
+        "batter_ab_vs_era_tier": ab_counts,
+        "era_tier_delta": deltas,
+    }, index=group.index)
+
+
+# ---------------------------------------------------------------------------
 # Platoon advantage
 # ---------------------------------------------------------------------------
 def compute_platoon_advantage(bat_side: str, pitcher_hand: str) -> int:
@@ -332,6 +412,22 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
         _current_hit_streak, include_groups=False
     ).reset_index(level=[0, 1], drop=True)
 
+    # ----- ERA Tier features (v1.2) -----
+    if "pitcher_era" in df.columns:
+        logger.info("Computing ERA tier features...")
+        era_tier_results = grouped.apply(
+            _era_tier_features_for_group, include_groups=False
+        ).reset_index(level=[0, 1], drop=True)
+
+        df["batter_hit_rate_vs_era_tier"] = era_tier_results["batter_hit_rate_vs_era_tier"]
+        df["batter_ab_vs_era_tier"] = era_tier_results["batter_ab_vs_era_tier"]
+        df["era_tier_delta"] = era_tier_results["era_tier_delta"]
+    else:
+        logger.warning("pitcher_era not in dataset — skipping ERA tier features")
+        df["batter_hit_rate_vs_era_tier"] = 0.0
+        df["batter_ab_vs_era_tier"] = 0
+        df["era_tier_delta"] = 0.0
+
     # ----- Binary / categorical features -----
     df["is_home"] = df["is_home"].astype(int)
 
@@ -394,6 +490,11 @@ FEATURE_COLUMNS = [
     "current_hitless_abs",
     "aabbh_ratio",
     "in_optimal_zone",
+
+    # ERA Tier features (v1.2)
+    "batter_hit_rate_vs_era_tier",
+    "batter_ab_vs_era_tier",
+    "era_tier_delta",
 
     # Matchup features
     "is_home",

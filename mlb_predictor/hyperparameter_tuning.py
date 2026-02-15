@@ -22,7 +22,7 @@ from sklearn.metrics import (
     classification_report, log_loss,
 )
 from xgboost import XGBClassifier
-import joblib
+import pickle
 import boto3
 
 from mlb_predictor.feature_engineering import FEATURE_COLUMNS
@@ -192,7 +192,10 @@ def run_hyperparameter_tuning(
     # Save model
     log(f"\nSaving tuned model to {MODEL_PATH}...")
     os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
-    joblib.dump((calibrated, feature_cols), MODEL_PATH)
+    with open(MODEL_PATH, "wb") as f:
+        pickle.dump(calibrated, f)
+    with open(os.path.join(os.path.dirname(MODEL_PATH), "feature_cols.pkl"), "wb") as f:
+        pickle.dump(feature_cols, f)
     log("Model saved.")
 
     # Build metrics dict

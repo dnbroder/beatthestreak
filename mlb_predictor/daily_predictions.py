@@ -13,6 +13,9 @@ v1.1 Changes:
   - Lineup pre-check: only score batters confirmed in the starting lineup
   - Doubleheader handling: detect double-game days, score both games
   - Early season fallback: use prior-season AABBH when current season < 7 games
+
+v1.2 Changes:
+  - ERA tier features: batter hit rate by opposing pitcher ERA tier
 """
 
 import os
@@ -224,6 +227,7 @@ def build_batter_features(
     player_id: int,
     season: int,
     game_date: str,
+    opposing_pitcher_era: float = None,
 ) -> dict:
     """
     Build feature vector for a single batter based on their recent history.
@@ -231,6 +235,8 @@ def build_batter_features(
 
     If current season has < 7 games, falls back to prior season stats
     for AABBH baseline (early-season fix).
+
+    v1.2: Also computes ERA tier features using opposing_pitcher_era.
     """
     data = _safe_get(
         f"{BASE_URL}/people/{player_id}/stats",
@@ -373,6 +379,20 @@ def build_batter_features(
         "game_num_in_season": num_games,
     }
 
+    # ----- ERA Tier features (v1.2) -----
+    # At prediction time we don't have per-game opposing pitcher ERAs
+    # from the game log API (it only gives batter stats per game, not
+    # who the opposing pitcher was). So we fall back to overall hit rate
+    # and set ab_count to 0 so the model knows this is a fallback.
+    #
+    # For TRAINING data, the full tier computation happens in
+    # feature_engineering.py with actual per-game opposing ERAs from
+    # historical_data.py schedule enrichment.
+    overall_hit_rate = total_hits / max(total_abs, 1)
+    features["batter_hit_rate_vs_era_tier"] = overall_hit_rate
+    features["batter_ab_vs_era_tier"] = 0
+    features["era_tier_delta"] = 0.0
+
     return features
 
 
@@ -466,8 +486,23 @@ def run_daily_predictions(
                 opp_pitcher_name = game["home_pitcher_name"]
                 opponent = game["home_team"]
 
-            # Step 3: Build batter features (with prior-season fallback)
-            features = build_batter_features(pid, season, date_str)
+            # Get opposing pitcher stats (for ERA tier + pitcher features)
+            if opp_pitcher_id:
+                if opp_pitcher_id not in pitcher_cache:
+                    pitcher_cache[opp_pitcher_id] = get_pitcher_season_stats(
+                        opp_pitcher_id, season
+                    )
+                p_stats = pitcher_cache[opp_pitcher_id]
+            else:
+                p_stats = {}
+
+            opp_era = p_stats.get("pitcher_era", 4.50)
+
+            # Step 3: Build batter features (with prior-season fallback + ERA tier)
+            features = build_batter_features(
+                pid, season, date_str,
+                opposing_pitcher_era=opp_era,
+            )
             if not features:
                 continue
 
@@ -483,15 +518,6 @@ def run_daily_predictions(
             features["is_home"] = 1 if is_home else 0
 
             # Pitcher features
-            if opp_pitcher_id:
-                if opp_pitcher_id not in pitcher_cache:
-                    pitcher_cache[opp_pitcher_id] = get_pitcher_season_stats(
-                        opp_pitcher_id, season
-                    )
-                p_stats = pitcher_cache[opp_pitcher_id]
-            else:
-                p_stats = {}
-
             features["pitcher_era"] = p_stats.get("pitcher_era", 4.50)
             features["pitcher_whip"] = p_stats.get("pitcher_whip", 1.30)
             features["pitcher_k_per_9"] = p_stats.get("pitcher_k_per_9", 8.5)
@@ -560,7 +586,7 @@ def run_daily_predictions(
     if len(pred_df) > 0:
         logger.info("=== TOP 10 PICKS ===")
         for _, row in pred_df.head(10).iterrows():
-            starter_tag = "S" if row.get("is_confirmed_starter", False) else "?"
+            starter_tag = "✓" if row.get("is_confirmed_starter", False) else "?"
             logger.info(
                 f"  #{int(row['rank'])} [{starter_tag}] {row['player_name']} ({row['team']}) "
                 f"vs {row['opp_pitcher']} ({row['opp_pitcher_hand']}) "

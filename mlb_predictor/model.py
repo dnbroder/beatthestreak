@@ -134,6 +134,7 @@ def train_model(
         min_child_weight=5,
         scale_pos_weight=scale_pos_weight,
         eval_metric="logloss",
+        early_stopping_rounds=50,
         random_state=42,
     )
 
@@ -141,7 +142,6 @@ def train_model(
         X_train, y_train,
         sample_weight=w_train,
         eval_set=[(X_test, y_test)],
-        early_stopping_rounds=50,
         verbose=False,
     )
 
@@ -150,7 +150,12 @@ def train_model(
     if calibrate and len(X_test) > 50:
         logger.info("Calibrating probabilities...")
         try:
-            cal_model = CalibratedClassifierCV(model, cv=5, method="sigmoid")
+            # Clone model without early_stopping_rounds for calibration
+            cal_params = model.get_params()
+            cal_params.pop('early_stopping_rounds', None)
+            cal_base = xgb.XGBClassifier(**cal_params)
+            cal_base.fit(X_train, y_train, sample_weight=w_train, verbose=False)
+            cal_model = CalibratedClassifierCV(cal_base, cv=5, method="sigmoid")
             cal_model.fit(X_train, y_train, sample_weight=w_train)
             final_model = cal_model
         except Exception as e:

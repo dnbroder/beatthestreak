@@ -20,11 +20,11 @@ jobs:
       contents: read
 
     steps:
+      - name: Suppress git default branch warning
+        run: git config --global init.defaultBranch main
+
       - name: Checkout repo
         uses: actions/checkout@v4
-
-      - name: Configure git
-        run: git config --global init.defaultBranch main
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4

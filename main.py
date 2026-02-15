@@ -25,6 +25,7 @@ from mlb_predictor.model import train_model, load_model
 from mlb_predictor.daily_predictions import run_daily_predictions
 from mlb_predictor.backtester import run_backtest
 from mlb_predictor.shap_analysis import run_shap_analysis
+from mlb_predictor.hyperparameter_tuning import run_hyperparameter_tuning
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -44,7 +45,7 @@ ENVIRONMENT = os.environ.get("ENVIRONMENT", "production")
 
 app = FastAPI(
     title="BeatTheStreak API",
-    version="0.3.0",
+    version="0.4.0",
     description=f"Environment: {ENVIRONMENT}",
 )
 
@@ -58,7 +59,7 @@ async def startup_event():
 def root():
     return {
         "app": "BeatTheStreak",
-        "version": "0.3.0",
+        "version": "0.4.0",
         "environment": ENVIRONMENT,
         "endpoints": {
             "GET /":              "This page",
@@ -69,6 +70,7 @@ def root():
             "GET /test":          "Mock pipeline test",
             "POST /train":        "Train XGBoost model (single season)",
             "POST /train/full":   "Train XGBoost model (multi-season)",
+            "POST /train/tuned":  "Train with hyperparameter optimization",
             "GET /predict/daily": "Today's hit predictions (ranked)",
             "POST /backtest":     "Run streak simulation",
             "POST /backtest-async": "Run full-season backtest (background, results to S3)",
@@ -258,6 +260,55 @@ def train_full_model(
         }
     except Exception as e:
         logger.error(f"Full training failed: {e}")
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+# ---------------------------------------------------------------------------
+# Train with Hyperparameter Tuning
+# ---------------------------------------------------------------------------
+@app.post("/train/tuned")
+def train_tuned_model(
+    start_year: int = Query(default=2021, description="Start season"),
+    end_year: int = Query(default=2023, description="End season"),
+    max_players: int = Query(default=None, description="Limit players per season"),
+    n_iter: int = Query(default=60, description="Number of random search iterations"),
+    cv_folds: int = Query(default=5, description="Cross-validation folds"),
+):
+    """
+    Train XGBoost with hyperparameter tuning via RandomizedSearchCV.
+
+    Tests n_iter random parameter combinations across cv_folds cross-validation
+    folds. Picks the best, retrains on full data, calibrates probabilities.
+
+    This replaces the trained model — run backtest after to validate.
+    """
+    logger.info(f"/train/tuned endpoint hit - {start_year} to {end_year}, n_iter={n_iter}")
+    try:
+        game_logs = build_multi_season_dataset(
+            start_year=start_year, end_year=end_year,
+            max_players_per_season=max_players,
+        )
+        if game_logs.empty:
+            return JSONResponse(status_code=503, content={"error": "No data retrieved"})
+
+        featured = engineer_features(game_logs)
+        model, metrics = run_hyperparameter_tuning(
+            featured,
+            n_iter=n_iter,
+            cv_folds=cv_folds,
+        )
+
+        if model is None:
+            return JSONResponse(status_code=503, content={"error": "Tuning failed"})
+
+        return {
+            "status": "success",
+            "message": f"Tuned model trained on {start_year}-{end_year}",
+            "total_rows": len(featured),
+            "metrics": metrics,
+        }
+    except Exception as e:
+        logger.error(f"Tuned training failed: {e}")
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 

@@ -16,6 +16,7 @@ v1.1 Changes:
 
 v1.2 Changes:
   - ERA tier features: batter hit rate by opposing pitcher ERA tier
+  - Verbose logging throughout prediction pipeline
 """
 
 import os
@@ -66,7 +67,7 @@ def get_games_for_date(date_str: str) -> list:
         List of game dicts with teams, venue, starting pitchers.
         Doubleheaders will have multiple entries for the same teams.
     """
-    logger.info(f"Fetching games for {date_str}...")
+    log(f"Fetching games for {date_str}...")
 
     data = _safe_get(
         f"{BASE_URL}/schedule",
@@ -78,6 +79,7 @@ def get_games_for_date(date_str: str) -> list:
         }
     )
     if not data:
+        log(f"No schedule data returned for {date_str}")
         return []
 
     games = []
@@ -126,7 +128,13 @@ def get_games_for_date(date_str: str) -> list:
     if dh_teams:
         log(f"  Doubleheader detected for: {', '.join(dh_teams)}")
 
-    logger.info(f"Found {len(games)} games for {date_str}")
+    log(f"Found {len(games)} games for {date_str}")
+    for g in games:
+        pitcher_away = g['away_pitcher_name']
+        pitcher_home = g['home_pitcher_name']
+        dh = " [DH]" if g['is_doubleheader'] else ""
+        log(f"  {g['away_team']} ({pitcher_away}) @ {g['home_team']} ({pitcher_home}) — {g['venue_name']}{dh}")
+
     return games
 
 
@@ -380,14 +388,6 @@ def build_batter_features(
     }
 
     # ----- ERA Tier features (v1.2) -----
-    # At prediction time we don't have per-game opposing pitcher ERAs
-    # from the game log API (it only gives batter stats per game, not
-    # who the opposing pitcher was). So we fall back to overall hit rate
-    # and set ab_count to 0 so the model knows this is a fallback.
-    #
-    # For TRAINING data, the full tier computation happens in
-    # feature_engineering.py with actual per-game opposing ERAs from
-    # historical_data.py schedule enrichment.
     overall_hit_rate = total_hits / max(total_abs, 1)
     features["batter_hit_rate_vs_era_tier"] = overall_hit_rate
     features["batter_ab_vs_era_tier"] = 0
@@ -420,18 +420,25 @@ def run_daily_predictions(
     if season is None:
         season = int(date_str[:4])
 
-    logger.info(f"=== Running daily predictions for {date_str} ===")
+    log("=" * 60)
+    log(f"DAILY PREDICTIONS: {date_str}")
+    log("=" * 60)
+    pipeline_start = time.time()
 
     # Load trained model
+    log("Loading trained model...")
     model, feature_cols = load_model()
     if model is None:
-        logger.error("No trained model found. Run /train first.")
+        log("ERROR: No trained model found. Run /train first.")
         return pd.DataFrame()
+    log(f"Model loaded ({len(feature_cols)} features)")
 
     # Step 1: Get games (with doubleheader detection)
+    log("")
+    log("--- Step 1: Scheduled Games ---")
     games = get_games_for_date(date_str)
     if not games:
-        logger.warning(f"No games found for {date_str}")
+        log(f"No games found for {date_str}")
         return pd.DataFrame()
 
     # Sort games by time so doubleheader game 1 is processed first
@@ -445,34 +452,50 @@ def run_daily_predictions(
     scored_players = set()
 
     all_predictions = []
+    total_batters_attempted = 0
+    total_batters_skipped = 0
+    total_api_calls = 0
 
-    for game in games:
+    log("")
+    log("--- Step 2-3: Lineups + Features ---")
+
+    for game_idx, game in enumerate(games):
         game_pk = game["game_pk"]
         venue = game["venue_name"]
         park_factor = get_park_factor(venue)
         game_num = game.get("game_number", 1)
 
         dh_label = f" (Game {game_num})" if game.get("is_doubleheader") else ""
-        logger.info(f"Processing: {game['away_team']} @ {game['home_team']} ({venue}){dh_label}")
+        log(f"")
+        log(f"Game {game_idx + 1}/{len(games)}: {game['away_team']} @ {game['home_team']}{dh_label}")
+        log(f"  Venue: {venue} (PF: {park_factor})")
+        log(f"  Pitchers: {game['away_pitcher_name']} vs {game['home_pitcher_name']}")
 
         # Step 2: Get CONFIRMED starting lineups only
         batters = get_confirmed_starters(game_pk)
+        total_api_calls += 1
         if not batters:
-            logger.warning(f"No lineup data for game {game_pk}")
+            log(f"  WARNING: No lineup data for game {game_pk}")
             continue
 
         # Count confirmed vs unconfirmed
         confirmed = sum(1 for b in batters if b.get("is_confirmed_starter", False))
-        logger.info(f"  Lineup: {confirmed} confirmed starters, {len(batters)} total")
+        unconfirmed = len(batters) - confirmed
+        log(f"  Lineup: {confirmed} confirmed starters" +
+            (f", {unconfirmed} unconfirmed (roster fallback)" if unconfirmed > 0 else ""))
+
+        game_scored = 0
+        game_skipped = 0
 
         for batter in batters:
             pid = batter["player_id"]
             is_home = batter["is_home"]
+            total_batters_attempted += 1
 
             # Doubleheader dedup: skip if already scored for game 1
-            # (In BTS you can pick a player for either game, so we keep the
-            # first game's prediction to avoid counting twice)
             if pid in scored_players and game.get("is_doubleheader"):
+                game_skipped += 1
+                total_batters_skipped += 1
                 continue
             scored_players.add(pid)
 
@@ -492,6 +515,7 @@ def run_daily_predictions(
                     pitcher_cache[opp_pitcher_id] = get_pitcher_season_stats(
                         opp_pitcher_id, season
                     )
+                    total_api_calls += 1
                 p_stats = pitcher_cache[opp_pitcher_id]
             else:
                 p_stats = {}
@@ -503,12 +527,16 @@ def run_daily_predictions(
                 pid, season, date_str,
                 opposing_pitcher_era=opp_era,
             )
+            total_api_calls += 1
             if not features:
+                game_skipped += 1
+                total_batters_skipped += 1
                 continue
 
             # Get player bio for bat side
             if pid not in player_info_cache:
                 player_info_cache[pid] = get_player_info(pid)
+                total_api_calls += 1
             bio = player_info_cache[pid]
             bat_side = bio.get("bat_side", "U")
 
@@ -527,6 +555,7 @@ def run_daily_predictions(
             if opp_pitcher_id:
                 if opp_pitcher_id not in player_info_cache:
                     player_info_cache[opp_pitcher_id] = get_player_info(opp_pitcher_id)
+                    total_api_calls += 1
                 opp_hand = player_info_cache[opp_pitcher_id].get("throw_side", "U")
 
             pitcher_hand_map = {"R": 0, "L": 1, "U": 0}
@@ -555,24 +584,41 @@ def run_daily_predictions(
                 **features,
             }
             all_predictions.append(row)
+            game_scored += 1
+
+        log(f"  Scored: {game_scored} batters" +
+            (f" ({game_skipped} skipped)" if game_skipped > 0 else ""))
 
     if not all_predictions:
-        logger.warning("No predictions generated")
+        log("WARNING: No predictions generated")
         return pd.DataFrame()
 
     pred_df = pd.DataFrame(all_predictions)
 
     # Step 4: Score through model
+    log("")
+    log("--- Step 4: Model Scoring ---")
+    log(f"Scoring {len(pred_df)} batters through model...")
+
     # Fill any missing feature columns with defaults
+    missing_cols = [col for col in feature_cols if col not in pred_df.columns]
+    if missing_cols:
+        log(f"  WARNING: Missing features (filling with 0): {missing_cols}")
     for col in feature_cols:
         if col not in pred_df.columns:
             pred_df[col] = 0
 
     # Handle NaN in feature columns
+    nan_counts = {}
     for col in feature_cols:
-        if pred_df[col].isna().any():
+        nan_count = pred_df[col].isna().sum()
+        if nan_count > 0:
+            nan_counts[col] = nan_count
             median_val = pred_df[col].median()
             pred_df[col] = pred_df[col].fillna(median_val if not pd.isna(median_val) else 0)
+
+    if nan_counts:
+        log(f"  Filled NaN values: {nan_counts}")
 
     X = pred_df[feature_cols]
     probabilities = model.predict_proba(X)[:, 1]
@@ -582,20 +628,54 @@ def run_daily_predictions(
     pred_df = pred_df.sort_values("confidence_pct", ascending=False).reset_index(drop=True)
     pred_df["rank"] = range(1, len(pred_df) + 1)
 
-    logger.info(f"Generated {len(pred_df)} predictions for {date_str}")
-    if len(pred_df) > 0:
-        logger.info("=== TOP 10 PICKS ===")
-        for _, row in pred_df.head(10).iterrows():
-            starter_tag = "✓" if row.get("is_confirmed_starter", False) else "?"
-            logger.info(
-                f"  #{int(row['rank'])} [{starter_tag}] {row['player_name']} ({row['team']}) "
-                f"vs {row['opp_pitcher']} ({row['opp_pitcher_hand']}) "
-                f"@ {row['venue']} — {row['confidence_pct']}%"
-            )
+    # Confidence stats
+    log(f"Scoring complete!")
+    log(f"  Total scored:  {len(pred_df)}")
+    log(f"  Attempted:     {total_batters_attempted}")
+    log(f"  Skipped:       {total_batters_skipped}")
+    log(f"  API calls:     {total_api_calls}")
+    log(f"  Confidence range: {pred_df['confidence_pct'].min():.1f}% — {pred_df['confidence_pct'].max():.1f}%")
+    log(f"  Confidence mean:  {pred_df['confidence_pct'].mean():.1f}%")
+    log(f"  In optimal zone:  {pred_df['in_optimal_zone'].sum()} / {len(pred_df)}")
+    log(f"  Platoon advantage: {pred_df['platoon_advantage'].sum()} / {len(pred_df)}")
+
+    # Top 10 picks
+    log("")
+    log("=" * 60)
+    log("TOP 10 PICKS")
+    log("=" * 60)
+    for _, row in pred_df.head(10).iterrows():
+        starter_tag = "✓" if row.get("is_confirmed_starter", False) else "?"
+        oz_tag = " [OZ]" if row.get("in_optimal_zone", 0) == 1 else ""
+        pa_tag = " [PA]" if row.get("platoon_advantage", 0) == 1 else ""
+        log(
+            f"  #{int(row['rank']):2d} [{starter_tag}] {row['player_name']:22s} "
+            f"({row['team']:25s}) vs {row['opp_pitcher']:18s} ({row['opp_pitcher_hand']}) "
+            f"— {row['confidence_pct']:5.1f}%{oz_tag}{pa_tag}"
+        )
+        log(
+            f"       BA: {row.get('batting_avg_season', 0):.3f} | "
+            f"AABBH: {row.get('aabbh_ratio', 0):.2f} | "
+            f"ERA: {row.get('pitcher_era', 0):.2f} | "
+            f"PF: {row.get('park_factor', 1.0):.2f}"
+        )
 
     # Step 5: Write to S3
     if write_to_s3:
+        log("")
+        log("--- Step 5: S3 Upload ---")
         write_predictions_to_s3(pred_df, date_str)
+
+    pipeline_time = time.time() - pipeline_start
+    log("")
+    log("=" * 60)
+    log("DAILY PREDICTIONS COMPLETE")
+    log(f"  Date:       {date_str}")
+    log(f"  Games:      {len(games)}")
+    log(f"  Batters:    {len(pred_df)}")
+    log(f"  Top pick:   {pred_df.iloc[0]['player_name']} ({pred_df.iloc[0]['confidence_pct']}%)")
+    log(f"  Pipeline:   {pipeline_time:.0f}s ({pipeline_time/60:.1f} min)")
+    log("=" * 60)
 
     return pred_df
 
@@ -619,7 +699,7 @@ def write_predictions_to_s3(df: pd.DataFrame, date_str: str):
             Body=csv_buffer.getvalue(),
             ContentType="text/csv",
         )
-        logger.info(f"Full predictions written to s3://{S3_BUCKET}/{full_key}")
+        log(f"Full predictions written to s3://{S3_BUCKET}/{full_key} ({len(df)} rows)")
 
         # Top 10 picks (cleaner for QuickSight dashboard)
         top10 = df.head(10)[[
@@ -649,7 +729,7 @@ def write_predictions_to_s3(df: pd.DataFrame, date_str: str):
             Body=top10_buffer.getvalue(),
             ContentType="text/csv",
         )
-        logger.info(f"Top 10 picks written to s3://{S3_BUCKET}/{top10_key}")
+        log(f"Top 10 written to s3://{S3_BUCKET}/{top10_key}")
 
         # Also write to a "latest" location for QuickSight to always point at
         s3.put_object(
@@ -664,7 +744,7 @@ def write_predictions_to_s3(df: pd.DataFrame, date_str: str):
             Body=csv_buffer.getvalue(),
             ContentType="text/csv",
         )
-        logger.info("Latest predictions updated")
+        log("Latest predictions updated (predictions/latest/)")
 
     except Exception as e:
-        logger.error(f"Failed to write to S3: {e}")
+        log(f"ERROR: Failed to write to S3: {e}")

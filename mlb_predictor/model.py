@@ -8,6 +8,7 @@ Output is a probability (confidence %) for each batter.
 import os
 import logging
 import pickle
+import time
 from typing import Tuple, Optional
 
 import numpy as np
@@ -38,6 +39,11 @@ MODEL_PATH = os.path.join(MODEL_DIR, "hit_predictor.pkl")
 CALIBRATED_MODEL_PATH = os.path.join(MODEL_DIR, "hit_predictor_calibrated.pkl")
 
 
+def log(msg):
+    """Print with flush for immediate container log visibility."""
+    print(f"[MODEL] {msg}", flush=True)
+
+
 # ---------------------------------------------------------------------------
 # Model training
 # ---------------------------------------------------------------------------
@@ -59,6 +65,11 @@ def train_model(
     Returns:
         (model, metrics_dict)
     """
+    log("=" * 60)
+    log("MODEL TRAINING START")
+    log("=" * 60)
+    train_start = time.time()
+
     if feature_cols is None:
         # Use whichever columns actually exist in the data
         available = [c for c in FEATURE_COLUMNS if c in df.columns]
@@ -66,32 +77,61 @@ def train_model(
             available = [c for c in BASIC_FEATURE_COLUMNS if c in df.columns]
         feature_cols = available
 
-    logger.info(f"Training with {len(feature_cols)} features: {feature_cols}")
+    log(f"Features selected: {len(feature_cols)}")
+    for i, col in enumerate(feature_cols):
+        log(f"  {i+1:2d}. {col}")
 
     # ----- Prep data -----
+    log("")
+    log("--- Data Preparation ---")
+    log(f"Raw input: {len(df):,} rows, {len(df.columns)} columns")
+
     # Drop rows with NaN in features or target
     required_cols = feature_cols + [TARGET_COLUMN]
     if WEIGHT_COLUMN in df.columns:
         required_cols.append(WEIGHT_COLUMN)
 
     clean = df.dropna(subset=feature_cols + [TARGET_COLUMN]).copy()
+    dropped_nan = len(df) - len(clean)
+    log(f"Dropped {dropped_nan:,} rows with NaN values ({dropped_nan/len(df)*100:.1f}%)")
 
     # Drop very early season games (< 7 games played) — not enough history
     if "game_num_in_season" in clean.columns:
+        before = len(clean)
         clean = clean[clean["game_num_in_season"] >= 7]
+        dropped_early = before - len(clean)
+        log(f"Dropped {dropped_early:,} early-season rows (< 7 games)")
 
-    logger.info(f"Training data: {len(clean)} rows after cleanup")
+    log(f"Clean training data: {len(clean):,} rows")
 
     if len(clean) < 100:
-        logger.error("Not enough clean data to train. Need at least 100 rows.")
+        log("ERROR: Not enough clean data to train. Need at least 100 rows.")
         return None, {"error": "Insufficient data"}
+
+    # Dataset stats
+    if "season" in clean.columns:
+        season_counts = clean["season"].value_counts().sort_index()
+        log(f"Seasons in dataset:")
+        for season, count in season_counts.items():
+            log(f"  {int(season)}: {count:,} rows")
 
     X = clean[feature_cols]
     y = clean[TARGET_COLUMN]
     weights = clean[WEIGHT_COLUMN] if WEIGHT_COLUMN in clean.columns else None
 
+    hit_rate_overall = y.mean()
+    log(f"Overall hit rate: {hit_rate_overall:.1%} ({int(y.sum()):,} hits / {len(y):,} games)")
+
+    if weights is not None:
+        weight_dist = clean[WEIGHT_COLUMN].value_counts().sort_index()
+        log(f"Sample weight distribution:")
+        for w, count in weight_dist.items():
+            log(f"  weight={w}: {count:,} rows")
+
     # ----- Train/test split -----
-    # Split by time — use recent data as test set for realistic evaluation
+    log("")
+    log("--- Train/Test Split ---")
+
     if "date" in clean.columns:
         clean_sorted = clean.sort_values("date")
         split_idx = int(len(clean_sorted) * (1 - test_size))
@@ -104,6 +144,11 @@ def train_model(
         y_test = test_data[TARGET_COLUMN]
         w_train = train_data[WEIGHT_COLUMN] if weights is not None else None
         w_test = test_data[WEIGHT_COLUMN] if weights is not None else None
+
+        if "date" in train_data.columns:
+            log(f"Time-based split (chronological)")
+            log(f"  Train period: {train_data['date'].min()} to {train_data['date'].max()}")
+            log(f"  Test period:  {test_data['date'].min()} to {test_data['date'].max()}")
     else:
         split = train_test_split(
             X, y, weights,
@@ -116,14 +161,18 @@ def train_model(
         else:
             X_train, X_test, y_train, y_test = split[:4]
             w_train, w_test = None, None
+        log(f"Random stratified split")
 
-    logger.info(f"Train: {len(X_train)} rows, Test: {len(X_test)} rows")
-    logger.info(f"Hit rate (train): {y_train.mean():.3f}, Hit rate (test): {y_test.mean():.3f}")
+    log(f"  Train: {len(X_train):,} rows (hit rate: {y_train.mean():.1%})")
+    log(f"  Test:  {len(X_test):,} rows (hit rate: {y_test.mean():.1%})")
 
     # ----- XGBoost model -----
-    # Calculate scale_pos_weight for class imbalance
+    log("")
+    log("--- XGBoost Training ---")
+
     hit_rate = y_train.mean()
     scale_pos_weight = (1 - hit_rate) / hit_rate if hit_rate > 0 else 1.0
+    log(f"Class balance: scale_pos_weight = {scale_pos_weight:.3f}")
 
     model = xgb.XGBClassifier(
         n_estimators=500,
@@ -138,30 +187,56 @@ def train_model(
         random_state=42,
     )
 
+    log(f"Hyperparameters:")
+    log(f"  n_estimators:      500 (early stopping at 50)")
+    log(f"  max_depth:         6")
+    log(f"  learning_rate:     0.05")
+    log(f"  subsample:         0.8")
+    log(f"  colsample_bytree:  0.8")
+    log(f"  min_child_weight:  5")
+    log(f"Training XGBoost...")
+
+    fit_start = time.time()
     model.fit(
         X_train, y_train,
         sample_weight=w_train,
         eval_set=[(X_test, y_test)],
         verbose=False,
     )
+    fit_time = time.time() - fit_start
+
+    best_iteration = getattr(model, 'best_iteration', 'N/A')
+    best_score = getattr(model, 'best_score', 'N/A')
+    log(f"XGBoost training complete in {fit_time:.1f}s")
+    log(f"  Best iteration: {best_iteration}")
+    log(f"  Best eval score: {best_score}")
 
     # ----- Calibration (makes probabilities more accurate) -----
     final_model = model
     if calibrate and len(X_test) > 50:
-        logger.info("Calibrating probabilities...")
+        log("")
+        log("--- Probability Calibration ---")
+        log("Calibrating with Platt scaling (sigmoid, 5-fold CV)...")
+        cal_start = time.time()
         try:
             # Clone model without early_stopping_rounds for calibration
             cal_params = model.get_params()
             cal_params.pop('early_stopping_rounds', None)
             cal_base = xgb.XGBClassifier(**cal_params)
+            log(f"Refitting base model without early stopping for calibration...")
             cal_base.fit(X_train, y_train, sample_weight=w_train, verbose=False)
             cal_model = CalibratedClassifierCV(cal_base, cv=5, method="sigmoid")
             cal_model.fit(X_train, y_train, sample_weight=w_train)
             final_model = cal_model
+            cal_time = time.time() - cal_start
+            log(f"Calibration complete in {cal_time:.1f}s")
         except Exception as e:
-            logger.warning(f"Calibration failed, using uncalibrated: {e}")
+            log(f"WARNING: Calibration failed, using uncalibrated model: {e}")
 
     # ----- Evaluate -----
+    log("")
+    log("--- Model Evaluation ---")
+
     y_pred = final_model.predict(X_test)
     y_prob = final_model.predict_proba(X_test)[:, 1]
 
@@ -177,17 +252,30 @@ def train_model(
         "features_used": feature_cols,
     }
 
-    logger.info(f"Model metrics: accuracy={metrics['accuracy']}, "
-                f"AUC={metrics['auc_roc']}, log_loss={metrics['log_loss']}")
+    log(f"  Accuracy:  {metrics['accuracy']:.4f}")
+    log(f"  AUC-ROC:   {metrics['auc_roc']:.4f}")
+    log(f"  Precision: {metrics['precision']:.4f}")
+    log(f"  Recall:    {metrics['recall']:.4f}")
+    log(f"  Log Loss:  {metrics['log_loss']:.4f}")
+
+    # Probability distribution
+    log(f"  Probability distribution (test set):")
+    log(f"    Mean:   {y_prob.mean():.3f}")
+    log(f"    Median: {np.median(y_prob):.3f}")
+    log(f"    Min:    {y_prob.min():.3f}")
+    log(f"    Max:    {y_prob.max():.3f}")
+    log(f"    Std:    {y_prob.std():.3f}")
 
     # ----- Feature importance -----
     if hasattr(model, "feature_importances_"):
         importance = dict(zip(feature_cols, [float(x) for x in model.feature_importances_]))
         sorted_imp = dict(sorted(importance.items(), key=lambda x: x[1], reverse=True))
         metrics["feature_importance"] = sorted_imp
-        logger.info("Feature importance (top 5):")
-        for feat, imp in list(sorted_imp.items())[:5]:
-            logger.info(f"  {feat}: {imp:.4f}")
+        log("")
+        log("--- Feature Importance (all features) ---")
+        for i, (feat, imp) in enumerate(sorted_imp.items()):
+            bar = "█" * int(imp * 100)
+            log(f"  {i+1:2d}. {feat:30s} {imp:.4f} {bar}")
 
     # Ensure all metrics are JSON-serializable (no numpy types)
     for k, v in metrics.items():
@@ -195,14 +283,31 @@ def train_model(
             metrics[k] = float(v)
 
     # ----- Save model -----
+    log("")
+    log("--- Saving Model ---")
     os.makedirs(MODEL_DIR, exist_ok=True)
     with open(MODEL_PATH, "wb") as f:
         pickle.dump(final_model, f)
-    logger.info(f"Model saved to {MODEL_PATH}")
+    model_size = os.path.getsize(MODEL_PATH)
+    log(f"Model saved to {MODEL_PATH} ({model_size / 1024:.1f} KB)")
 
     # Save feature column order (needed for prediction)
     with open(os.path.join(MODEL_DIR, "feature_cols.pkl"), "wb") as f:
         pickle.dump(feature_cols, f)
+    log(f"Feature columns saved ({len(feature_cols)} features)")
+
+    total_time = time.time() - train_start
+    log("")
+    log("=" * 60)
+    log("MODEL TRAINING COMPLETE")
+    log(f"  Total time: {total_time:.0f}s ({total_time/60:.1f} min)")
+    log(f"  Features:   {len(feature_cols)}")
+    log(f"  Train rows: {len(X_train):,}")
+    log(f"  Test rows:  {len(X_test):,}")
+    log(f"  Accuracy:   {metrics['accuracy']:.4f}")
+    log(f"  AUC-ROC:    {metrics['auc_roc']:.4f}")
+    log(f"  Calibrated: {'Yes' if final_model != model else 'No'}")
+    log("=" * 60)
 
     return final_model, metrics
 

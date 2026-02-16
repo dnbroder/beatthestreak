@@ -11,6 +11,7 @@ Run via: POST /train/tuned?start_year=2021&end_year=2023
 import os
 import json
 import logging
+import time
 import numpy as np
 import pandas as pd
 from datetime import datetime
@@ -55,6 +56,11 @@ PARAM_GRID = {
     "scale_pos_weight": [1.0, 1.5, 2.0, 2.5],
 }
 
+# Total possible combinations
+_total_combos = 1
+for v in PARAM_GRID.values():
+    _total_combos *= len(v)
+
 
 def run_hyperparameter_tuning(
     featured_df: pd.DataFrame,
@@ -76,10 +82,13 @@ def run_hyperparameter_tuning(
     """
     log("=" * 60)
     log("HYPERPARAMETER TUNING START")
-    log(f"  Search iterations: {n_iter}")
-    log(f"  CV folds: {cv_folds}")
-    log(f"  Dataset: {len(featured_df)} rows")
     log("=" * 60)
+    tune_start = time.time()
+
+    log(f"  Search iterations: {n_iter} of {_total_combos:,} possible combinations")
+    log(f"  CV folds: {cv_folds}")
+    log(f"  Total model fits: {n_iter * cv_folds}")
+    log(f"  Dataset: {len(featured_df):,} rows")
 
     # Prepare data
     feature_cols = [c for c in FEATURE_COLUMNS if c in featured_df.columns]
@@ -87,17 +96,30 @@ def run_hyperparameter_tuning(
     y = featured_df["got_hit"].copy()
 
     # Fill NaN
+    nan_before = X.isna().sum().sum()
     X = X.fillna(0)
+    if nan_before > 0:
+        log(f"  Filled {nan_before:,} NaN values with 0")
 
-    log(f"Features: {len(feature_cols)}")
-    log(f"Target distribution: {y.value_counts().to_dict()}")
-    log(f"Hit rate: {y.mean():.1%}")
+    log(f"  Features: {len(feature_cols)}")
+    log(f"  Target distribution: hits={int(y.sum()):,}, misses={int((1-y).sum()):,}")
+    log(f"  Hit rate: {y.mean():.1%}")
+
+    if "season" in featured_df.columns:
+        season_counts = featured_df["season"].value_counts().sort_index()
+        log(f"  Seasons:")
+        for season, count in season_counts.items():
+            log(f"    {int(season)}: {count:,} rows")
+
+    log("")
+    log("Search space:")
+    for param, values in PARAM_GRID.items():
+        log(f"  {param:25s}: {values}")
 
     # Base estimator
     base_xgb = XGBClassifier(
         objective="binary:logistic",
         eval_metric="logloss",
-        use_label_encoder=False,
         random_state=42,
         n_jobs=-1,
     )
@@ -106,8 +128,10 @@ def run_hyperparameter_tuning(
     cv = StratifiedKFold(n_splits=cv_folds, shuffle=True, random_state=42)
 
     # Randomized search
-    log(f"Starting RandomizedSearchCV with {n_iter} iterations x {cv_folds} folds...")
-    log(f"Total model fits: {n_iter * cv_folds}")
+    log("")
+    log(f"Starting RandomizedSearchCV...")
+    log(f"Estimated time: {n_iter * cv_folds * 0.5:.0f}–{n_iter * cv_folds * 2:.0f}s "
+        f"({n_iter * cv_folds * 0.5 / 60:.0f}–{n_iter * cv_folds * 2 / 60:.0f} min)")
 
     search = RandomizedSearchCV(
         estimator=base_xgb,
@@ -121,7 +145,9 @@ def run_hyperparameter_tuning(
         return_train_score=True,
     )
 
+    search_start = time.time()
     search.fit(X, y)
+    search_time = time.time() - search_start
 
     # Results
     best_params = search.best_params_
@@ -129,19 +155,21 @@ def run_hyperparameter_tuning(
 
     log("")
     log("=" * 60)
-    log("BEST PARAMETERS FOUND:")
+    log(f"SEARCH COMPLETE in {search_time:.0f}s ({search_time/60:.1f} min)")
     log("=" * 60)
+    log("")
+    log("BEST PARAMETERS FOUND:")
     for param, value in sorted(best_params.items()):
         log(f"  {param:25s} = {value}")
     log(f"  Best CV AUC: {best_score:.4f}")
 
-    # Show top 5 parameter combos
+    # Show top 10 parameter combos
     log("")
-    log("Top 5 parameter combinations:")
+    log("Top 10 parameter combinations:")
     results_df = pd.DataFrame(search.cv_results_)
     results_df = results_df.sort_values("rank_test_score")
-    for i, row in results_df.head(5).iterrows():
-        log(f"  Rank {int(row['rank_test_score'])}: "
+    for i, (_, row) in enumerate(results_df.head(10).iterrows()):
+        log(f"  Rank {int(row['rank_test_score']):2d}: "
             f"AUC={row['mean_test_score']:.4f} (+/- {row['std_test_score']:.4f}), "
             f"train_AUC={row['mean_train_score']:.4f}")
 
@@ -151,28 +179,54 @@ def run_hyperparameter_tuning(
     test_auc = top_result["mean_test_score"]
     overfit_gap = train_auc - test_auc
 
-    log(f"\nOverfit check: train_AUC={train_auc:.4f}, test_AUC={test_auc:.4f}, gap={overfit_gap:.4f}")
+    log("")
+    log(f"--- Overfit Analysis ---")
+    log(f"  Train AUC: {train_auc:.4f}")
+    log(f"  Test AUC:  {test_auc:.4f}")
+    log(f"  Gap:       {overfit_gap:.4f}")
     if overfit_gap > 0.05:
-        log("WARNING: Possible overfitting detected (gap > 5%)")
+        log("  WARNING: Possible overfitting detected (gap > 5%)")
+    elif overfit_gap > 0.03:
+        log("  CAUTION: Moderate gap (3-5%), monitor on OOS data")
     else:
-        log("OK: Minimal overfitting")
+        log("  OK: Minimal overfitting")
+
+    # AUC distribution across all iterations
+    all_scores = results_df["mean_test_score"]
+    log("")
+    log(f"--- Score Distribution (all {n_iter} iterations) ---")
+    log(f"  Mean AUC:   {all_scores.mean():.4f}")
+    log(f"  Median AUC: {all_scores.median():.4f}")
+    log(f"  Min AUC:    {all_scores.min():.4f}")
+    log(f"  Max AUC:    {all_scores.max():.4f}")
+    log(f"  Std:        {all_scores.std():.4f}")
 
     # Retrain on FULL dataset with best params
-    log("\nRetraining on full dataset with best parameters...")
+    log("")
+    log("--- Retraining on Full Dataset ---")
+    log(f"Using best parameters on all {len(X):,} rows...")
+
+    retrain_start = time.time()
     best_xgb = XGBClassifier(
         **best_params,
         objective="binary:logistic",
         eval_metric="logloss",
-        use_label_encoder=False,
         random_state=42,
         n_jobs=-1,
     )
     best_xgb.fit(X, y)
+    retrain_time = time.time() - retrain_start
+    log(f"Retrain complete in {retrain_time:.1f}s")
 
     # Calibrate probabilities
-    log("Calibrating probabilities...")
+    log("")
+    log("--- Probability Calibration ---")
+    log("Calibrating with isotonic regression (3-fold CV)...")
+    cal_start = time.time()
     calibrated = CalibratedClassifierCV(best_xgb, cv=3, method="isotonic")
     calibrated.fit(X, y)
+    cal_time = time.time() - cal_start
+    log(f"Calibration complete in {cal_time:.1f}s")
 
     # Evaluate on training data (for comparison with previous runs)
     y_pred = calibrated.predict(X)
@@ -183,20 +237,41 @@ def run_hyperparameter_tuning(
     brier = brier_score_loss(y, y_prob)
     logloss = log_loss(y, y_prob)
 
-    log(f"\nFull dataset metrics (in-sample):")
+    log("")
+    log("--- In-Sample Metrics (full dataset) ---")
     log(f"  Accuracy:   {accuracy:.4f}")
     log(f"  AUC:        {auc:.4f}")
     log(f"  Brier:      {brier:.4f}")
     log(f"  Log Loss:   {logloss:.4f}")
 
+    # Probability distribution
+    log(f"  Probability distribution:")
+    log(f"    Mean:   {y_prob.mean():.3f}")
+    log(f"    Median: {np.median(y_prob):.3f}")
+    log(f"    Min:    {y_prob.min():.3f}")
+    log(f"    Max:    {y_prob.max():.3f}")
+
+    # Feature importance from best model
+    if hasattr(best_xgb, "feature_importances_"):
+        importance = dict(zip(feature_cols, [float(x) for x in best_xgb.feature_importances_]))
+        sorted_imp = sorted(importance.items(), key=lambda x: x[1], reverse=True)
+        log("")
+        log("--- Feature Importance (tuned model) ---")
+        for i, (feat, imp) in enumerate(sorted_imp):
+            bar = "█" * int(imp * 100)
+            log(f"  {i+1:2d}. {feat:30s} {imp:.4f} {bar}")
+
     # Save model
-    log(f"\nSaving tuned model to {MODEL_PATH}...")
+    log("")
+    log("--- Saving Model ---")
     os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
     with open(MODEL_PATH, "wb") as f:
         pickle.dump(calibrated, f)
+    model_size = os.path.getsize(MODEL_PATH)
     with open(os.path.join(os.path.dirname(MODEL_PATH), "feature_cols.pkl"), "wb") as f:
         pickle.dump(feature_cols, f)
-    log("Model saved.")
+    log(f"Tuned model saved to {MODEL_PATH} ({model_size / 1024:.1f} KB)")
+    log(f"Feature columns saved ({len(feature_cols)} features)")
 
     # Build metrics dict
     metrics = {
@@ -207,6 +282,7 @@ def run_hyperparameter_tuning(
             "train_auc": round(train_auc, 4),
             "test_auc": round(test_auc, 4),
             "overfit_gap": round(overfit_gap, 4),
+            "search_time_seconds": round(search_time, 1),
         },
         "best_params": best_params,
         "full_dataset_metrics": {
@@ -230,6 +306,8 @@ def run_hyperparameter_tuning(
 
     # Write to S3
     if write_to_s3:
+        log("")
+        log("--- S3 Upload ---")
         try:
             s3 = boto3.client("s3")
             ts = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -241,12 +319,20 @@ def run_hyperparameter_tuning(
                 Body=json.dumps(metrics, indent=2, default=str),
                 ContentType="application/json",
             )
-            log(f"Tuning results written to s3://{S3_BUCKET}/{key}")
+            log(f"Results written to s3://{S3_BUCKET}/{key}")
         except Exception as e:
-            log(f"Failed to write tuning results to S3: {e}")
+            log(f"ERROR: Failed to write to S3: {e}")
 
-    log("\n" + "=" * 60)
+    total_time = time.time() - tune_start
+    log("")
+    log("=" * 60)
     log("HYPERPARAMETER TUNING COMPLETE")
+    log(f"  Total time:    {total_time:.0f}s ({total_time/60:.1f} min)")
+    log(f"  Search time:   {search_time:.0f}s")
+    log(f"  Best CV AUC:   {best_score:.4f}")
+    log(f"  Overfit gap:   {overfit_gap:.4f}")
+    log(f"  Iterations:    {n_iter}")
+    log(f"  Model fits:    {n_iter * cv_folds}")
     log("=" * 60)
 
     return calibrated, metrics

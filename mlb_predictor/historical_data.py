@@ -49,14 +49,17 @@ def get_season_players(season: int) -> pd.DataFrame:
     Get all MLB players who appeared in a given season.
     Returns DataFrame with player_id, name, team, position, bat_side.
     """
-    logger.info(f"Fetching players for {season} season...")
+    logger.info(f"[TRAIN] Fetching rosters for {season} season...")
 
     teams_data = _safe_get(f"{BASE_URL}/teams", params={"sportId": 1, "season": season})
     if not teams_data:
         return pd.DataFrame()
 
+    teams_list = teams_data.get("teams", [])
+    logger.info(f"[TRAIN]   Found {len(teams_list)} teams for {season}")
+
     players = []
-    for team in teams_data.get("teams", []):
+    for i, team in enumerate(teams_list):
         team_id = team["id"]
         team_name = team["name"]
 
@@ -67,6 +70,7 @@ def get_season_players(season: int) -> pd.DataFrame:
         if not roster_data:
             continue
 
+        team_players = 0
         for entry in roster_data.get("roster", []):
             person = entry.get("person", {})
             position = entry.get("position", {})
@@ -83,9 +87,10 @@ def get_season_players(season: int) -> pd.DataFrame:
                 "position": position.get("abbreviation"),
                 "season": season,
             })
+            team_players += 1
 
     df = pd.DataFrame(players).drop_duplicates(subset=["player_id", "season"])
-    logger.info(f"Found {len(df)} position players for {season}")
+    logger.info(f"[TRAIN]   Found {len(df)} position players across {len(teams_list)} teams for {season}")
     return df
 
 
@@ -327,7 +332,7 @@ def get_season_schedule(season: int) -> dict:
 
     Much more efficient than calling boxscore for each game individually.
     """
-    logger.info(f"Fetching season schedule for {season} (venues + pitchers)...")
+    logger.info(f"[TRAIN]   Fetching {season} schedule (venues + pitchers)...")
     game_info = {}
 
     # Pull month by month to keep responses manageable
@@ -350,6 +355,7 @@ def get_season_schedule(season: int) -> dict:
         if not data:
             continue
 
+        month_games = 0
         for date_entry in data.get("dates", []):
             for game in date_entry.get("games", []):
                 gpk = game.get("gamePk")
@@ -376,8 +382,11 @@ def get_season_schedule(season: int) -> dict:
                     "home_team_name": home_team.get("team", {}).get("name", ""),
                     "away_team_name": away_team.get("team", {}).get("name", ""),
                 }
+                month_games += 1
 
-    logger.info(f"Fetched schedule info for {len(game_info)} games in {season}")
+        logger.info(f"[TRAIN]     {season}-{month:02d}: {month_games} games loaded")
+
+    logger.info(f"[TRAIN]   Schedule complete: {len(game_info)} total games for {season}")
     return game_info
 
 
@@ -394,16 +403,17 @@ def build_season_game_logs(season: int, max_players: int = None) -> pd.DataFrame
         season: Year to pull
         max_players: Cap player count (for testing). None = all players.
     """
-    logger.info(f"=== Building game logs for {season} ===")
+    logger.info(f"[TRAIN] === Loading season {season} ===")
+    season_start = time.time()
 
     players = get_season_players(season)
     if players.empty:
-        logger.warning(f"No players found for {season}")
+        logger.warning(f"[TRAIN] No players found for {season}")
         return pd.DataFrame()
 
     if max_players:
         players = players.head(max_players)
-        logger.info(f"Limited to {max_players} players for testing")
+        logger.info(f"[TRAIN]   Limited to {max_players} players for testing")
 
     # Pull schedule data (venues + pitchers) in bulk
     schedule = get_season_schedule(season)
@@ -413,18 +423,24 @@ def build_season_game_logs(season: int, max_players: int = None) -> pd.DataFrame
 
     all_logs = []
     player_info_cache = {}
+    total_game_rows = 0
+    total_api_calls = 0
+    skipped_players = 0
 
     for idx, row in players.iterrows():
         pid = row["player_id"]
 
         # Get game logs
         logs = get_player_game_log(pid, season)
+        total_api_calls += 1
         if logs.empty:
+            skipped_players += 1
             continue
 
         # Get player bio (cached)
         if pid not in player_info_cache:
             player_info_cache[pid] = get_player_info(pid)
+            total_api_calls += 1
         bio = player_info_cache[pid]
 
         # Merge bio into logs
@@ -459,6 +475,7 @@ def build_season_game_logs(season: int, max_players: int = None) -> pd.DataFrame
                 pitcher_stats_cache[opp_pitcher_id] = get_pitcher_season_stats(
                     opp_pitcher_id, season
                 )
+                total_api_calls += 1
 
             p_stats = pitcher_stats_cache.get(opp_pitcher_id, {})
             pitcher_eras.append(p_stats.get("pitcher_era"))
@@ -470,6 +487,7 @@ def build_season_game_logs(season: int, max_players: int = None) -> pd.DataFrame
             if opp_pitcher_id:
                 if opp_pitcher_id not in player_info_cache:
                     player_info_cache[opp_pitcher_id] = get_player_info(opp_pitcher_id)
+                    total_api_calls += 1
                 opp_bio = player_info_cache[opp_pitcher_id]
                 opp_hand = opp_bio.get("throw_side", "U")
             pitcher_hands.append(opp_hand)
@@ -490,18 +508,28 @@ def build_season_game_logs(season: int, max_players: int = None) -> pd.DataFrame
         logs["pitcher_hand"] = pitcher_hands
         logs["platoon_advantage"] = platoon_advantages
 
+        total_game_rows += len(logs)
         all_logs.append(logs)
 
-        if (idx + 1) % 10 == 0:
-            logger.info(f"  Processed {idx + 1}/{len(players)} players for {season} "
-                        f"({len(pitcher_stats_cache)} pitchers cached)")
+        if (idx + 1) % 25 == 0:
+            elapsed = time.time() - season_start
+            logger.info(f"[TRAIN]   {season}: {idx + 1}/{len(players)} players | "
+                        f"{total_game_rows:,} game rows | "
+                        f"{len(pitcher_stats_cache)} pitchers cached | "
+                        f"{total_api_calls:,} API calls | "
+                        f"{elapsed:.0f}s elapsed")
 
     if not all_logs:
         return pd.DataFrame()
 
     result = pd.concat(all_logs, ignore_index=True)
-    logger.info(f"Built {len(result)} game log rows for {season} "
-                f"(with pitcher + park data)")
+    elapsed = time.time() - season_start
+    logger.info(f"[TRAIN] === Season {season} complete ===")
+    logger.info(f"[TRAIN]   {len(result):,} game rows from {len(players) - skipped_players} players "
+                f"({skipped_players} skipped, no games)")
+    logger.info(f"[TRAIN]   {len(pitcher_stats_cache)} unique pitchers | "
+                f"{total_api_calls:,} total API calls | "
+                f"{elapsed:.0f}s ({elapsed/60:.1f} min)")
     return result
 
 
@@ -513,17 +541,36 @@ def build_multi_season_dataset(
     """
     Build the full historical dataset across multiple seasons.
     """
-    logger.info(f"Building dataset from {start_year} to {end_year}")
-    all_seasons = []
+    total_seasons = end_year - start_year + 1
+    logger.info(f"[TRAIN] ========================================")
+    logger.info(f"[TRAIN] MULTI-SEASON BUILD: {start_year} to {end_year} ({total_seasons} seasons)")
+    logger.info(f"[TRAIN] ========================================")
 
-    for year in range(start_year, end_year + 1):
+    all_seasons = []
+    build_start = time.time()
+
+    for i, year in enumerate(range(start_year, end_year + 1)):
+        logger.info(f"[TRAIN]")
+        logger.info(f"[TRAIN] --- Season {year} ({i + 1}/{total_seasons}) ---")
         season_data = build_season_game_logs(year, max_players=max_players_per_season)
         if not season_data.empty:
             all_seasons.append(season_data)
+            total_rows = sum(len(s) for s in all_seasons)
+            elapsed = time.time() - build_start
+            logger.info(f"[TRAIN] Running total: {total_rows:,} rows | "
+                        f"{len(all_seasons)}/{total_seasons} seasons loaded | "
+                        f"{elapsed:.0f}s elapsed")
 
     if not all_seasons:
         return pd.DataFrame()
 
     full_dataset = pd.concat(all_seasons, ignore_index=True)
-    logger.info(f"Complete dataset: {len(full_dataset)} rows across {end_year - start_year + 1} seasons")
+    total_time = time.time() - build_start
+    logger.info(f"[TRAIN]")
+    logger.info(f"[TRAIN] ========================================")
+    logger.info(f"[TRAIN] BUILD COMPLETE")
+    logger.info(f"[TRAIN]   {len(full_dataset):,} total rows")
+    logger.info(f"[TRAIN]   {total_seasons} seasons ({start_year}-{end_year})")
+    logger.info(f"[TRAIN]   {total_time:.0f}s ({total_time/60:.1f} min)")
+    logger.info(f"[TRAIN] ========================================")
     return full_dataset

@@ -38,6 +38,14 @@ handler.setFormatter(formatter)
 if not logger.handlers:
     logger.addHandler(handler)
 
+# Configure the "beatthestreak" logger used by all mlb_predictor modules
+# Without this, logger.info() calls in historical_data, model, feature_engineering,
+# daily_predictions, backtester, etc. are silently dropped (no handlers attached).
+bt_logger = logging.getLogger("beatthestreak")
+bt_logger.setLevel(logging.INFO)
+if not bt_logger.handlers:
+    bt_logger.addHandler(handler)
+
 # ---------------------------------------------------------------------------
 # App
 # ---------------------------------------------------------------------------

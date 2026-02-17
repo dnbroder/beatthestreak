@@ -45,11 +45,13 @@ jobs:
           docker push $REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           docker logout $REGISTRY
 
-      - name: Package Lambda
+      - name: Package Lambdas
         run: |
           cd mlb_predictor/lambda
           zip prediction_trigger.zip prediction_trigger.py
+          zip model_retrainer.zip model_retrainer.py
           aws s3 cp prediction_trigger.zip s3://mlb-hit-predictor-$ENVIRONMENT-bucket/lambda/
+          aws s3 cp model_retrainer.zip s3://mlb-hit-predictor-$ENVIRONMENT-bucket/lambda/
 
       - name: Deploy CloudFormation stack
         run: |

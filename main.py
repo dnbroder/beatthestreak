@@ -28,6 +28,11 @@ from mlb_predictor.shap_analysis import run_shap_analysis
 from mlb_predictor.hyperparameter_tuning import run_hyperparameter_tuning
 
 # ---------------------------------------------------------------------------
+# Version — single source of truth
+# ---------------------------------------------------------------------------
+from mlb_predictor.__version__ import __version__ as VERSION
+
+# ---------------------------------------------------------------------------
 # Logging
 # ---------------------------------------------------------------------------
 logger = logging.getLogger(__name__)
@@ -53,7 +58,7 @@ ENVIRONMENT = os.environ.get("ENVIRONMENT", "production")
 
 app = FastAPI(
     title="BeatTheStreak API",
-    version="0.4.0",
+    version=VERSION,
     description=f"Environment: {ENVIRONMENT}",
 )
 
@@ -67,7 +72,7 @@ async def startup_event():
 def root():
     return {
         "app": "BeatTheStreak",
-        "version": "0.4.0",
+        "version": VERSION,
         "environment": ENVIRONMENT,
         "endpoints": {
             "GET /":              "This page",
@@ -584,4 +589,139 @@ def backtest_async(
                    f"Results will be written to S3 when complete.",
         "s3_location": f"s3://mlb-hit-predictor-{env}-bucket/backtest/{season}/",
         "check_results": f"Look for summary.csv, daily_results.csv, and full_results.json",
+    }
+
+
+# ---------------------------------------------------------------------------
+# Auto-Retrain (fire-and-forget, triggered by Lambda)
+# ---------------------------------------------------------------------------
+RETRAIN_ACCURACY_THRESHOLD = 0.75
+
+@app.post("/train/retrain-auto")
+def retrain_auto(
+    start_year: int = Query(description="Start training year"),
+    end_year: int = Query(description="End training year"),
+    validation_season: int = Query(description="Season to backtest for validation"),
+    sns_topic: str = Query(default="", description="SNS topic ARN for notifications"),
+):
+    """
+    Full automated retrain pipeline: train → backtest → validate → notify.
+    Runs in background thread. Called by the model_retrainer Lambda.
+    """
+    import threading
+    import boto3
+
+    logger.info(f"/train/retrain-auto endpoint hit - {start_year}-{end_year}, validate on {validation_season}")
+
+    def _run():
+        try:
+            logger.info("[RETRAIN] ============================================================")
+            logger.info(f"[RETRAIN] AUTOMATED RETRAIN: {start_year}-{end_year}")
+            logger.info("[RETRAIN] ============================================================")
+
+            # Step 1: Train
+            logger.info("[RETRAIN] Step 1: Training model...")
+            game_logs = build_multi_season_dataset(
+                start_year=start_year, end_year=end_year,
+            )
+            if game_logs.empty:
+                logger.error("[RETRAIN] No data retrieved, aborting")
+                _send_retrain_sns(sns_topic, "FAILED", f"No training data for {start_year}-{end_year}")
+                return
+
+            featured = engineer_features(game_logs)
+            model, metrics = train_model(featured)
+
+            if model is None:
+                logger.error(f"[RETRAIN] Training failed: {metrics}")
+                _send_retrain_sns(sns_topic, "FAILED", f"Training failed: {metrics}")
+                return
+
+            total_rows = len(featured)
+            logger.info(f"[RETRAIN] Training complete: {total_rows} rows")
+            logger.info(f"[RETRAIN] Metrics: {metrics}")
+
+            # Step 2: Backtest validation
+            logger.info(f"[RETRAIN] Step 2: Validation backtest on {validation_season}...")
+            results = run_backtest(
+                season=validation_season,
+                interval=3,
+                write_to_s3=True,
+            )
+
+            if "error" in results:
+                logger.error(f"[RETRAIN] Backtest failed: {results['error']}")
+                _send_retrain_sns(sns_topic, "FAILED", f"Backtest failed: {results['error']}")
+                return
+
+            summary = results.get("summary", {})
+            top1_rate = summary.get("top1_hit_rate", 0)
+            top1_streak = summary.get("top1_longest_streak", 0)
+            dates_tested = summary.get("dates_tested", 0)
+
+            logger.info(f"[RETRAIN] Validation results:")
+            logger.info(f"[RETRAIN]   Top-1 hit rate: {top1_rate * 100:.1f}%")
+            logger.info(f"[RETRAIN]   Longest streak: {top1_streak}")
+            logger.info(f"[RETRAIN]   Dates tested: {dates_tested}")
+
+            # Step 3: Validate
+            if top1_rate >= RETRAIN_ACCURACY_THRESHOLD:
+                status = "SUCCESS"
+                msg = (
+                    f"Annual retrain PASSED for {end_year + 1} season.\n\n"
+                    f"Training: {start_year}-{end_year} ({total_rows} rows)\n"
+                    f"Validation: {validation_season} ({dates_tested} dates)\n"
+                    f"Top-1 hit rate: {top1_rate * 100:.1f}%\n"
+                    f"Longest streak: {top1_streak}\n"
+                    f"Threshold: {RETRAIN_ACCURACY_THRESHOLD * 100}%\n\n"
+                    f"Model is ready. No action required."
+                )
+                logger.info(f"[RETRAIN] PASSED — {top1_rate * 100:.1f}% >= {RETRAIN_ACCURACY_THRESHOLD * 100}%")
+            else:
+                status = "WARNING"
+                msg = (
+                    f"Annual retrain BELOW THRESHOLD.\n\n"
+                    f"Training: {start_year}-{end_year} ({total_rows} rows)\n"
+                    f"Validation: {validation_season} ({dates_tested} dates)\n"
+                    f"Top-1 hit rate: {top1_rate * 100:.1f}%\n"
+                    f"Longest streak: {top1_streak}\n"
+                    f"Threshold: {RETRAIN_ACCURACY_THRESHOLD * 100}%\n\n"
+                    f"Manual review required. Consider running /train/tuned."
+                )
+                logger.warning(f"[RETRAIN] BELOW THRESHOLD — {top1_rate * 100:.1f}% < {RETRAIN_ACCURACY_THRESHOLD * 100}%")
+
+            logger.info("[RETRAIN] ============================================================")
+            logger.info(f"[RETRAIN] RETRAIN COMPLETE — {status}")
+            logger.info("[RETRAIN] ============================================================")
+
+            _send_retrain_sns(sns_topic, status, msg)
+
+        except Exception as e:
+            logger.error(f"[RETRAIN] Pipeline exception: {e}")
+            _send_retrain_sns(sns_topic, "FAILED", f"Pipeline exception: {str(e)}")
+
+    def _send_retrain_sns(topic_arn, status, message):
+        """Send SNS notification from ECS container."""
+        if not topic_arn:
+            return
+        try:
+            import boto3
+            sns = boto3.client("sns")
+            year = end_year + 1
+            sns.publish(
+                TopicArn=topic_arn,
+                Subject=f"[RETRAIN {status}] {year} Pre-Season",
+                Message=message,
+            )
+            logger.info(f"[RETRAIN] SNS sent: {status}")
+        except Exception as e:
+            logger.error(f"[RETRAIN] SNS failed: {e}")
+
+    thread = threading.Thread(target=_run, daemon=True)
+    thread.start()
+
+    return {
+        "status": "started",
+        "message": f"Retrain pipeline running: train {start_year}-{end_year}, "
+                   f"validate on {validation_season}. Results via SNS + CloudWatch.",
     }

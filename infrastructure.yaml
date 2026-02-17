@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: ECS Fargate Deployment for BeatTheStreak
+Description: BeatTheStreak — ECS Fargate + EventBridge + API Gateway
 
 Parameters:
   Environment:
@@ -26,12 +26,48 @@ Parameters:
       - "true"
       - "false"
     Description: Enable daily EventBridge triggers (production only)
+  EnablePublicAPI:
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: Enable API Gateway + ALB for customer-facing API (production only)
+  EnableAutoRetrain:
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: Enable annual pre-season model retraining (production only)
+  AlertEmail:
+    Type: String
+    Default: ""
+    Description: Email for SNS alerts (retrain results, accuracy warnings)
+  DomainName:
+    Type: String
+    Default: ""
+    Description: Custom API domain (e.g. api.beatthestreak.com). Leave blank for default Gateway URL.
+  CertificateArn:
+    Type: String
+    Default: ""
+    Description: ACM certificate ARN for custom domain. Required if DomainName is set.
 
 Conditions:
   IsProduction: !Equals [!Ref Environment, production]
   ScheduleEnabled: !And
     - !Equals [!Ref EnableScheduledPredictions, "true"]
     - !Condition IsProduction
+  APIEnabled: !And
+    - !Equals [!Ref EnablePublicAPI, "true"]
+    - !Condition IsProduction
+  RetrainEnabled: !And
+    - !Equals [!Ref EnableAutoRetrain, "true"]
+    - !Condition IsProduction
+  HasAlertEmail: !Not [!Equals [!Ref AlertEmail, ""]]
+  HasCustomDomain: !And
+    - !Not [!Equals [!Ref DomainName, ""]]
+    - !Condition APIEnabled
 
 Resources:
 
@@ -157,6 +193,10 @@ Resources:
                   - s3:ListBucket
                   - kms:GenerateDataKey
                 Resource: "*"
+              - Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource: "*"
 
   TaskDefinition:
     Type: AWS::ECS::TaskDefinition
@@ -253,7 +293,6 @@ Resources:
         S3Bucket: !Sub mlb-hit-predictor-${Environment}-bucket
         S3Key: lambda/prediction_trigger.zip
 
-  # IAM role for the Lambda — needs ECS + EC2 read access
   PredictionTriggerRole:
     Type: AWS::IAM::Role
     Condition: ScheduleEnabled
@@ -271,31 +310,26 @@ Resources:
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
-              # CloudWatch Logs for Lambda
               - Effect: Allow
                 Action:
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                 Resource: "arn:aws:logs:*:*:*"
-              # ECS read access to discover task IP
               - Effect: Allow
                 Action:
                   - ecs:ListTasks
                   - ecs:DescribeTasks
                 Resource: "*"
-              # EC2 read access to get public IP from ENI
               - Effect: Allow
                 Action:
                   - ec2:DescribeNetworkInterfaces
                 Resource: "*"
-              # S3 write access for no-games marker
               - Effect: Allow
                 Action:
                   - s3:PutObject
                 Resource: !Sub "arn:aws:s3:::mlb-hit-predictor-${Environment}-bucket/predictions/*"
 
-  # Lambda log group
   PredictionTriggerLogGroup:
     Type: AWS::Logs::LogGroup
     Condition: ScheduleEnabled
@@ -303,9 +337,7 @@ Resources:
       LogGroupName: !Sub /aws/lambda/${Environment}-prediction-trigger
       RetentionInDays: 14
 
-  # --------------------------------------------------------------------------
-  # Morning trigger: 11:30 AM ET (16:30 UTC) — day game lineups
-  # --------------------------------------------------------------------------
+  # Morning trigger: 11:30 AM ET (16:30 UTC)
   MorningPredictionRule:
     Type: AWS::Events::Rule
     Condition: ScheduleEnabled
@@ -328,9 +360,7 @@ Resources:
       Principal: events.amazonaws.com
       SourceArn: !GetAtt MorningPredictionRule.Arn
 
-  # --------------------------------------------------------------------------
-  # Evening trigger: 5:00 PM ET (22:00 UTC) — night game lineups
-  # --------------------------------------------------------------------------
+  # Evening trigger: 5:00 PM ET (22:00 UTC)
   EveningPredictionRule:
     Type: AWS::Events::Rule
     Condition: ScheduleEnabled
@@ -353,6 +383,494 @@ Resources:
       Principal: events.amazonaws.com
       SourceArn: !GetAtt EveningPredictionRule.Arn
 
+  # ===========================================================================
+  # AUTO-RETRAIN — Annual pre-season model retraining (production only)
+  # ===========================================================================
+
+  # SNS topic for pipeline alerts (retrain results, accuracy warnings)
+  AlertTopic:
+    Type: AWS::SNS::Topic
+    Condition: HasAlertEmail
+    Properties:
+      TopicName: !Sub ${Environment}-beatthestreak-alerts
+      DisplayName: BeatTheStreak Alerts
+
+  AlertSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: HasAlertEmail
+    Properties:
+      TopicArn: !Ref AlertTopic
+      Protocol: email
+      Endpoint: !Ref AlertEmail
+
+  # Lambda: annual retrain + validation
+  ModelRetrainerFunction:
+    Type: AWS::Lambda::Function
+    Condition: RetrainEnabled
+    Properties:
+      FunctionName: !Sub ${Environment}-model-retrainer
+      Runtime: python3.12
+      Handler: model_retrainer.handler
+      Timeout: 900  # 15 min (Lambda max) — triggers training, doesn't wait for completion
+      MemorySize: 128
+      Role: !GetAtt ModelRetrainerRole.Arn
+      Environment:
+        Variables:
+          ECS_CLUSTER: !Sub ${Environment}-cluster
+          CONTAINER_PORT: !Ref ContainerPort
+          ENVIRONMENT: !Ref Environment
+          SNS_TOPIC_ARN: !If
+            - HasAlertEmail
+            - !Ref AlertTopic
+            - ""
+      Code:
+        S3Bucket: !Sub mlb-hit-predictor-${Environment}-bucket
+        S3Key: lambda/model_retrainer.zip
+
+  ModelRetrainerRole:
+    Type: AWS::IAM::Role
+    Condition: RetrainEnabled
+    Properties:
+      RoleName: !Sub ${Environment}-model-retrainer-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: ModelRetrainerPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              # CloudWatch Logs
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: "arn:aws:logs:*:*:*"
+              # ECS + EC2 read (discover task IP)
+              - Effect: Allow
+                Action:
+                  - ecs:ListTasks
+                  - ecs:DescribeTasks
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - ec2:DescribeNetworkInterfaces
+                Resource: "*"
+              # SNS publish (alerts)
+              - Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource: "*"
+
+  ModelRetrainerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Condition: RetrainEnabled
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${Environment}-model-retrainer
+      RetentionInDays: 30
+
+  # Annual trigger: February 15 at 3:00 PM UTC (10:00 AM ET)
+  AnnualRetrainRule:
+    Type: AWS::Events::Rule
+    Condition: RetrainEnabled
+    Properties:
+      Name: !Sub ${Environment}-annual-retrain
+      Description: "Annual pre-season model retrain (Feb 15, 10:00 AM ET)"
+      ScheduleExpression: "cron(0 15 15 2 ? *)"
+      State: ENABLED
+      Targets:
+        - Id: AnnualRetrainTarget
+          Arn: !GetAtt ModelRetrainerFunction.Arn
+          Input: '{"trigger": "annual_retrain"}'
+
+  AnnualRetrainPermission:
+    Type: AWS::Lambda::Permission
+    Condition: RetrainEnabled
+    Properties:
+      FunctionName: !Ref ModelRetrainerFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt AnnualRetrainRule.Arn
+
+  # ===========================================================================
+  # PUBLIC API — API GATEWAY + ALB (production only, when enabled)
+  # ===========================================================================
+
+  # --------------------------------------------------------------------------
+  # Application Load Balancer (internal, fronts ECS for API Gateway)
+  # --------------------------------------------------------------------------
+
+  ALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Condition: APIEnabled
+    Properties:
+      GroupDescription: !Sub ${Environment} ALB - API Gateway traffic
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 10.0.0.0/16
+
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Condition: APIEnabled
+    Properties:
+      Name: !Sub ${Environment}-bts-alb
+      Scheme: internal
+      Type: application
+      Subnets:
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
+      SecurityGroups:
+        - !Ref ALBSecurityGroup
+
+  ALBTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Condition: APIEnabled
+    Properties:
+      Name: !Sub ${Environment}-bts-tg
+      Port: 8080
+      Protocol: HTTP
+      VpcId: !Ref VPC
+      TargetType: ip
+      HealthCheckPath: /health
+      HealthCheckIntervalSeconds: 30
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 3
+      Matcher:
+        HttpCode: "200"
+
+  ALBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Condition: APIEnabled
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 80
+      Protocol: HTTP
+      DefaultAction:
+        Type: forward
+        TargetGroupArn: !Ref ALBTargetGroup
+
+  # --------------------------------------------------------------------------
+  # API Gateway (REST API)
+  # --------------------------------------------------------------------------
+
+  BeatTheStreakAPI:
+    Type: AWS::ApiGateway::RestApi
+    Condition: APIEnabled
+    Properties:
+      Name: !Sub ${Environment}-beatthestreak-api
+      Description: BeatTheStreak Hit Prediction API
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+
+  # VPC Link connects API Gateway to internal ALB
+  VpcLink:
+    Type: AWS::ApiGateway::VpcLink
+    Condition: APIEnabled
+    Properties:
+      Name: !Sub ${Environment}-bts-vpc-link
+      TargetArns:
+        - !Ref ApplicationLoadBalancer
+
+  # /v1
+  V1Resource:
+    Type: AWS::ApiGateway::Resource
+    Condition: APIEnabled
+    Properties:
+      RestApiId: !Ref BeatTheStreakAPI
+      ParentId: !GetAtt BeatTheStreakAPI.RootResourceId
+      PathPart: v1
+
+  # /v1/picks
+  PicksResource:
+    Type: AWS::ApiGateway::Resource
+    Condition: APIEnabled
+    Properties:
+      RestApiId: !Ref BeatTheStreakAPI
+      ParentId: !Ref V1Resource
+      PathPart: picks
+
+  # /v1/picks/daily
+  PicksDailyResource:
+    Type: AWS::ApiGateway::Resource
+    Condition: APIEnabled
+    Properties:
+      RestApiId: !Ref BeatTheStreakAPI
+      ParentId: !Ref PicksResource
+      PathPart: daily
+
+  PicksDailyMethod:
+    Type: AWS::ApiGateway::Method
+    Condition: APIEnabled
+    Properties:
+      RestApiId: !Ref BeatTheStreakAPI
+      ResourceId: !Ref PicksDailyResource
+      HttpMethod: GET
+      AuthorizationType: NONE
+      ApiKeyRequired: true
+      RequestParameters:
+        method.request.querystring.date: false
+        method.request.querystring.top_n: false
+      Integration:
+        Type: HTTP_PROXY
+        IntegrationHttpMethod: GET
+        Uri: !Sub http://${ApplicationLoadBalancer.DNSName}/v1/picks/daily
+        ConnectionType: VPC_LINK
+        ConnectionId: !Ref VpcLink
+        RequestParameters:
+          integration.request.querystring.date: method.request.querystring.date
+          integration.request.querystring.top_n: method.request.querystring.top_n
+
+  # /v1/picks/{date}
+  PicksByDateResource:
+    Type: AWS::ApiGateway::Resource
+    Condition: APIEnabled
+    Properties:
+      RestApiId: !Ref BeatTheStreakAPI
+      ParentId: !Ref PicksResource
+      PathPart: "{date}"
+
+  PicksByDateMethod:
+    Type: AWS::ApiGateway::Method
+    Condition: APIEnabled
+    Properties:
+      RestApiId: !Ref BeatTheStreakAPI
+      ResourceId: !Ref PicksByDateResource
+      HttpMethod: GET
+      AuthorizationType: NONE
+      ApiKeyRequired: true
+      RequestParameters:
+        method.request.path.date: true
+        method.request.querystring.top_n: false
+      Integration:
+        Type: HTTP_PROXY
+        IntegrationHttpMethod: GET
+        Uri: !Sub http://${ApplicationLoadBalancer.DNSName}/v1/picks/{date}
+        ConnectionType: VPC_LINK
+        ConnectionId: !Ref VpcLink
+        RequestParameters:
+          integration.request.path.date: method.request.path.date
+          integration.request.querystring.top_n: method.request.querystring.top_n
+
+  # /v1/confidence
+  ConfidenceResource:
+    Type: AWS::ApiGateway::Resource
+    Condition: APIEnabled
+    Properties:
+      RestApiId: !Ref BeatTheStreakAPI
+      ParentId: !Ref V1Resource
+      PathPart: confidence
+
+  # /v1/confidence/{player_id}
+  ConfidencePlayerResource:
+    Type: AWS::ApiGateway::Resource
+    Condition: APIEnabled
+    Properties:
+      RestApiId: !Ref BeatTheStreakAPI
+      ParentId: !Ref ConfidenceResource
+      PathPart: "{player_id}"
+
+  ConfidencePlayerMethod:
+    Type: AWS::ApiGateway::Method
+    Condition: APIEnabled
+    Properties:
+      RestApiId: !Ref BeatTheStreakAPI
+      ResourceId: !Ref ConfidencePlayerResource
+      HttpMethod: GET
+      AuthorizationType: NONE
+      ApiKeyRequired: true
+      RequestParameters:
+        method.request.path.player_id: true
+        method.request.querystring.date: false
+      Integration:
+        Type: HTTP_PROXY
+        IntegrationHttpMethod: GET
+        Uri: !Sub http://${ApplicationLoadBalancer.DNSName}/v1/confidence/{player_id}
+        ConnectionType: VPC_LINK
+        ConnectionId: !Ref VpcLink
+        RequestParameters:
+          integration.request.path.player_id: method.request.path.player_id
+          integration.request.querystring.date: method.request.querystring.date
+
+  # /v1/health (no API key required)
+  HealthAPIResource:
+    Type: AWS::ApiGateway::Resource
+    Condition: APIEnabled
+    Properties:
+      RestApiId: !Ref BeatTheStreakAPI
+      ParentId: !Ref V1Resource
+      PathPart: health
+
+  HealthAPIMethod:
+    Type: AWS::ApiGateway::Method
+    Condition: APIEnabled
+    Properties:
+      RestApiId: !Ref BeatTheStreakAPI
+      ResourceId: !Ref HealthAPIResource
+      HttpMethod: GET
+      AuthorizationType: NONE
+      ApiKeyRequired: false
+      Integration:
+        Type: HTTP_PROXY
+        IntegrationHttpMethod: GET
+        Uri: !Sub http://${ApplicationLoadBalancer.DNSName}/v1/health
+        ConnectionType: VPC_LINK
+        ConnectionId: !Ref VpcLink
+
+  # /v1/meta (no API key required)
+  MetaResource:
+    Type: AWS::ApiGateway::Resource
+    Condition: APIEnabled
+    Properties:
+      RestApiId: !Ref BeatTheStreakAPI
+      ParentId: !Ref V1Resource
+      PathPart: meta
+
+  MetaMethod:
+    Type: AWS::ApiGateway::Method
+    Condition: APIEnabled
+    Properties:
+      RestApiId: !Ref BeatTheStreakAPI
+      ResourceId: !Ref MetaResource
+      HttpMethod: GET
+      AuthorizationType: NONE
+      ApiKeyRequired: false
+      Integration:
+        Type: HTTP_PROXY
+        IntegrationHttpMethod: GET
+        Uri: !Sub http://${ApplicationLoadBalancer.DNSName}/v1/meta
+        ConnectionType: VPC_LINK
+        ConnectionId: !Ref VpcLink
+
+  # --------------------------------------------------------------------------
+  # Usage Plans + Deployment
+  # --------------------------------------------------------------------------
+
+  APIDeployment:
+    Type: AWS::ApiGateway::Deployment
+    Condition: APIEnabled
+    DependsOn:
+      - PicksDailyMethod
+      - PicksByDateMethod
+      - ConfidencePlayerMethod
+      - HealthAPIMethod
+      - MetaMethod
+    Properties:
+      RestApiId: !Ref BeatTheStreakAPI
+
+  APIStage:
+    Type: AWS::ApiGateway::Stage
+    Condition: APIEnabled
+    Properties:
+      RestApiId: !Ref BeatTheStreakAPI
+      DeploymentId: !Ref APIDeployment
+      StageName: !Ref Environment
+      MethodSettings:
+        - ResourcePath: "/*"
+          HttpMethod: "*"
+          LoggingLevel: INFO
+          MetricsEnabled: true
+          ThrottlingRateLimit: 100
+          ThrottlingBurstLimit: 200
+
+  # Basic tier: top 5 picks, 100 calls/day
+  BasicUsagePlan:
+    Type: AWS::ApiGateway::UsagePlan
+    Condition: APIEnabled
+    DependsOn: APIStage
+    Properties:
+      UsagePlanName: !Sub ${Environment}-basic
+      Description: "Basic: top 5 picks, 100 requests/day"
+      Throttle:
+        RateLimit: 5
+        BurstLimit: 10
+      Quota:
+        Limit: 100
+        Period: DAY
+      ApiStages:
+        - ApiId: !Ref BeatTheStreakAPI
+          Stage: !Ref APIStage
+
+  # Pro tier: full predictions + features, 1000 calls/day
+  ProUsagePlan:
+    Type: AWS::ApiGateway::UsagePlan
+    Condition: APIEnabled
+    DependsOn: APIStage
+    Properties:
+      UsagePlanName: !Sub ${Environment}-pro
+      Description: "Pro: full predictions with features, 1000 requests/day"
+      Throttle:
+        RateLimit: 20
+        BurstLimit: 50
+      Quota:
+        Limit: 1000
+        Period: DAY
+      ApiStages:
+        - ApiId: !Ref BeatTheStreakAPI
+          Stage: !Ref APIStage
+
+  # Enterprise tier: unlimited, real-time, SHAP
+  EnterpriseUsagePlan:
+    Type: AWS::ApiGateway::UsagePlan
+    Condition: APIEnabled
+    DependsOn: APIStage
+    Properties:
+      UsagePlanName: !Sub ${Environment}-enterprise
+      Description: "Enterprise: unlimited, full feature access"
+      Throttle:
+        RateLimit: 100
+        BurstLimit: 200
+      Quota:
+        Limit: 50000
+        Period: DAY
+      ApiStages:
+        - ApiId: !Ref BeatTheStreakAPI
+          Stage: !Ref APIStage
+
+  # --------------------------------------------------------------------------
+  # Custom Domain (optional)
+  # --------------------------------------------------------------------------
+
+  CustomDomain:
+    Type: AWS::ApiGateway::DomainName
+    Condition: HasCustomDomain
+    Properties:
+      DomainName: !Ref DomainName
+      RegionalCertificateArn: !Ref CertificateArn
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+
+  DomainMapping:
+    Type: AWS::ApiGateway::BasePathMapping
+    Condition: HasCustomDomain
+    DependsOn: APIStage
+    Properties:
+      DomainName: !Ref CustomDomain
+      RestApiId: !Ref BeatTheStreakAPI
+      Stage: !Ref Environment
+
+  # API Gateway CloudWatch logs
+  APILogGroup:
+    Type: AWS::Logs::LogGroup
+    Condition: APIEnabled
+    Properties:
+      LogGroupName: !Sub /aws/apigateway/${Environment}-beatthestreak-api
+      RetentionInDays: 30
+
+# ===========================================================================
+# OUTPUTS
+# ===========================================================================
+
 Outputs:
   ClusterName:
     Value: !Ref ECSCluster
@@ -360,9 +878,11 @@ Outputs:
     Value: !GetAtt ECSService.Name
   LogGroup:
     Value: !Ref LogGroup
-    Description: CloudWatch log group - check /ecs/<environment> in CloudWatch
+    Description: CloudWatch log group — check /ecs/<environment> in CloudWatch
   Environment:
     Value: !Ref Environment
+
+  # EventBridge outputs
   MorningSchedule:
     Condition: ScheduleEnabled
     Value: "11:30 AM ET daily (March-October)"
@@ -375,3 +895,43 @@ Outputs:
     Condition: ScheduleEnabled
     Value: !Ref PredictionTriggerFunction
     Description: Lambda function that triggers daily predictions
+
+  # API Gateway outputs
+  APIEndpoint:
+    Condition: APIEnabled
+    Value: !Sub https://${BeatTheStreakAPI}.execute-api.${AWS::Region}.amazonaws.com/${Environment}
+    Description: Public API endpoint URL
+  CustomDomainURL:
+    Condition: HasCustomDomain
+    Value: !Sub https://${DomainName}
+    Description: Custom domain URL
+  ALBDnsName:
+    Condition: APIEnabled
+    Value: !GetAtt ApplicationLoadBalancer.DNSName
+    Description: Internal ALB DNS (not publicly accessible)
+  BasicUsagePlanId:
+    Condition: APIEnabled
+    Value: !Ref BasicUsagePlan
+    Description: Attach Basic tier API keys to this usage plan
+  ProUsagePlanId:
+    Condition: APIEnabled
+    Value: !Ref ProUsagePlan
+    Description: Attach Pro tier API keys to this usage plan
+  EnterpriseUsagePlanId:
+    Condition: APIEnabled
+    Value: !Ref EnterpriseUsagePlan
+    Description: Attach Enterprise tier API keys to this usage plan
+
+  # Auto-retrain outputs
+  RetrainSchedule:
+    Condition: RetrainEnabled
+    Value: "February 15, 10:00 AM ET annually"
+    Description: Annual model retrain trigger
+  RetrainLambda:
+    Condition: RetrainEnabled
+    Value: !Ref ModelRetrainerFunction
+    Description: Lambda function that retrains model pre-season
+  AlertTopicArn:
+    Condition: HasAlertEmail
+    Value: !Ref AlertTopic
+    Description: SNS topic for pipeline alerts

@@ -226,7 +226,7 @@ curl -s http://$PUBLIC_IP:8080/health
 │                        ECS FARGATE CLUSTER                          │
 │                                                                     │
 │  ┌───────────────────────────────────────────────────────────┐      │
-│  │                   FastAPI Application                      │      │
+│  │                   FastAPI Application                     │      │
 │  │                                                           │      │
 │  │  /train/full ─── historical_data.py ─── MLB Stats API     │      │
 │  │       │              (2000-2024)                           │      │

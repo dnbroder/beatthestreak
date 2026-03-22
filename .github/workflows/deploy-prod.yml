@@ -24,17 +24,17 @@ jobs:
         run: git config --global init.defaultBranch main
 
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v4.1.0
         with:
           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/mlb-cicd-role
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
         id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
+        uses: aws-actions/amazon-ecr-login@v2.0.1
 
       - name: Build and push Docker image
         env:
@@ -55,6 +55,7 @@ jobs:
 
       - name: Deploy CloudFormation stack
         run: |
+          set +e
           aws cloudformation deploy \
             --template-file infrastructure.yaml \
             --stack-name $STACK_NAME \
@@ -68,7 +69,20 @@ jobs:
               EnablePublicAPI=true \
               EnableAutoRetrain=true \
               AlertEmail=${{ secrets.ALERT_EMAIL }} \
-            --no-fail-on-empty-changeset || true
+            --no-fail-on-empty-changeset
+          CFN_EXIT=$?
+          if [ $CFN_EXIT -ne 0 ]; then
+            STATUS=$(aws cloudformation describe-stacks \
+              --stack-name $STACK_NAME \
+              --query 'Stacks[0].StackStatus' \
+              --output text 2>/dev/null)
+            if [[ "$STATUS" == "UPDATE_COMPLETE" || "$STATUS" == "CREATE_COMPLETE" ]]; then
+              echo "Stack is healthy ($STATUS) — no infrastructure changes, continuing"
+            else
+              echo "CloudFormation failed — stack status: $STATUS"
+              exit 1
+            fi
+          fi
 
       - name: Force new ECS deployment
         run: |

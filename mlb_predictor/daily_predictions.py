@@ -17,10 +17,14 @@ v1.1 Changes:
 v1.2 Changes:
   - ERA tier features: batter hit rate by opposing pitcher ERA tier
   - Verbose logging throughout prediction pipeline
+
+v1.4 Changes:
+  - summary.json + daily_log.json written to S3 for README auto-update
 """
 
 import os
 import io
+import json
 import logging
 import time
 from datetime import datetime, timedelta
@@ -745,6 +749,60 @@ def write_predictions_to_s3(df: pd.DataFrame, date_str: str):
             ContentType="text/csv",
         )
         log("Latest predictions updated (predictions/latest/)")
+
+        # --- summary.json + daily_log.json for README auto-update ---
+        # Load or initialize running summary
+        try:
+            obj = s3.get_object(Bucket=S3_BUCKET, Key="predictions/latest/summary.json")
+            summary = json.loads(obj["Body"].read())
+        except Exception:
+            summary = {
+                "dates_predicted": 0,
+                "top1_hits": 0,
+                "top1_misses": 0,
+                "top1_hit_rate_pct": 0.0,
+                "current_streak": 0,
+                "longest_streak": 0,
+                "season": date_str[:4],
+            }
+
+        # Load or initialize daily log
+        try:
+            obj = s3.get_object(Bucket=S3_BUCKET, Key="predictions/latest/daily_log.json")
+            daily_log = json.loads(obj["Body"].read())
+        except Exception:
+            daily_log = []
+
+        # Today's top pick entry (result populated tomorrow when actuals arrive)
+        top1 = df.iloc[0]
+        today_entry = {
+            "date": date_str,
+            "top_pick": top1["player_name"],
+            "team": top1["team"],
+            "confidence": round(float(top1["confidence_pct"]), 1),
+            "top1_hit": None,   # filled in next morning when game results arrive
+            "streak": summary.get("current_streak", 0),
+        }
+
+        # Append today, avoid duplicates, keep last 180 days
+        daily_log = [d for d in daily_log if d["date"] != date_str]
+        daily_log.append(today_entry)
+        daily_log = sorted(daily_log, key=lambda x: x["date"])[-180:]
+
+        # Write both files
+        s3.put_object(
+            Bucket=S3_BUCKET,
+            Key="predictions/latest/summary.json",
+            Body=json.dumps(summary, indent=2),
+            ContentType="application/json",
+        )
+        s3.put_object(
+            Bucket=S3_BUCKET,
+            Key="predictions/latest/daily_log.json",
+            Body=json.dumps(daily_log, indent=2),
+            ContentType="application/json",
+        )
+        log("summary.json + daily_log.json updated in S3")
 
     except Exception as e:
         log(f"ERROR: Failed to write to S3: {e}")

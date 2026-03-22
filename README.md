@@ -30,6 +30,7 @@ The 0.8% accuracy delta across a 5-year era gap with zero roster overlap demonst
 6. [API Endpoints](#6-api-endpoints)
 7. [Customer-Facing API](#7-customer-facing-api)
 8. [Monitoring & Operations](#8-monitoring--operations)
+9. [Live Season Results](#9-live-season-results)
 
 ---
 
@@ -435,3 +436,52 @@ When `AlertEmail` is configured:
 | v1.1.0 | 2026-02-14 | Lineup pre-check, doubleheader handling, AABBH fallback | **76.7%** (69/90), 13-game streak |
 | v1.2.0 | 2026-02-15 | ERA tier features (26 features), calibration fix, EventBridge + Lambda | **78.9%** (71/90), **21-game streak** |
 | v1.3.0 | 2026-02-16 | Cross-era validation (78.1%, 179 dates), verbose logging fix, auto-retrain Lambda + SNS alerts, API Gateway + ALB + usage plans, customer endpoints, single-stack feature gates | **78.1%** cross-era (139/178), **21-game streak** |
+
+---
+
+## 9. Live Season Results
+
+> Results update automatically each morning after the daily prediction pipeline runs.
+> Data source: `s3://mlb-hit-predictor-production-bucket/predictions/latest/summary.json`
+
+### 2026 Season — Running Record
+
+| Metric | Value | Updated |
+|--------|-------|---------|
+| **Top-1 Hit Rate** | — | — |
+| **Current Streak** | — | — |
+| **Longest Streak** | — | — |
+| **Dates Predicted** | — | — |
+| **Season Start** | March 27, 2026 | — |
+
+### Daily Log
+
+| Date | Top Pick | Team | Confidence | Result | Streak |
+|------|----------|------|------------|--------|--------|
+| *Populates after Opening Day (March 27, 2026)* | | | | | |
+
+### How Results Are Logged
+
+Each morning after `/predict/daily` runs, the pipeline writes to S3:
+
+```
+s3://mlb-hit-predictor-production-bucket/
+├── predictions/latest/
+│   ├── top10_picks.csv       ← Top 10 picks (QuickSight)
+│   ├── all_predictions.csv   ← Full ranked list (QuickSight)
+│   ├── summary.json          ← Running season metrics
+│   └── daily_log.json        ← Per-day pick + result log
+└── predictions/{date}/
+    ├── top10_picks.csv
+    ├── all_predictions.csv
+    └── results.json          ← Populated next morning with actuals
+```
+
+### Automated README Updates
+
+A GitHub Action (`update-results.yml`) runs daily at 1 PM ET. It reads `summary.json` and `daily_log.json` from S3 and commits the updated tables above directly to this README. The bot commit uses `[skip ci]` to prevent triggering a redeploy.
+
+To trigger a manual update at any time:
+```
+GitHub → Actions → Update Live Results → Run workflow
+```

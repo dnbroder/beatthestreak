@@ -217,7 +217,7 @@ curl -s http://$PUBLIC_IP:8080/health
 ┌─────────────────────────────────────────────────────────────────────┐
 │                        DEVELOPER WORKFLOW                           │
 │                                                                     │
-│  VS Code ──► GitHub (main) ──► GitHub Actions ──► ECR ──► ECS      │
+│  VS Code ──► GitHub (main) ──► GitHub Actions ──► ECR ──► ECS       │
 │                                   (mlb-cicd-role)                   │
 └─────────────────────────────────────────────────────────────────────┘
                                                         │

@@ -459,7 +459,7 @@ When `AlertEmail` is configured:
 
 | Date | Top Pick | Team | Confidence | Result | Streak |
 |------|----------|------|------------|--------|--------|
-| *Populates after Opening Day (March 27, 2026)* | | | | | |
+| *Populates after Opening Day (March 25, 2026)* | | | | | |
 
 ### How Results Are Logged
 

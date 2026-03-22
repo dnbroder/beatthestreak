@@ -436,7 +436,7 @@ When `AlertEmail` is configured:
 | v1.1.0 | 2026-02-14 | Lineup pre-check, doubleheader handling, AABBH fallback | **76.7%** (69/90), 13-game streak |
 | v1.2.0 | 2026-02-15 | ERA tier features (26 features), calibration fix, EventBridge + Lambda | **78.9%** (71/90), **21-game streak** |
 | v1.3.0 | 2026-02-16 | Cross-era validation (78.1%, 179 dates), verbose logging fix, auto-retrain Lambda + SNS alerts, API Gateway + ALB + usage plans, customer endpoints, single-stack feature gates | **78.1%** cross-era (139/178), **21-game streak** |
-| v2.0.0 | 2026-03-22 | Production deployment — live API feed, EventBridge daily scheduling, S3→QuickSight pipeline, summary.json + daily_log.json for README auto-update, deploy-prod.yml CI/CD workflow, CloudFormation error handling | **Live as of Opening Day March 27, 2026** |
+| v2.0.0 | 2026-03-22 | Production deployment — live API feed, EventBridge daily scheduling, S3→QuickSight pipeline, summary.json + daily_log.json for README auto-update, deploy-prod.yml CI/CD workflow, CloudFormation error handling | **Live as of Opening Day March 25, 2026** |
 
 ---
 

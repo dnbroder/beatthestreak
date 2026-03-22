@@ -208,7 +208,7 @@ curl -s http://$PUBLIC_IP:8080/health
 │  │                   FastAPI Application                     │      │
 │  │                                                           │      │
 │  │  /train/full ─── historical_data.py ─── MLB Stats API     │      │
-│  │       │              (2000-2024)                           │      │
+│  │       │              (2000-2024)                          │      │
 │  │       ▼                                                   │      │
 │  │  feature_engineering.py ──► 26 features + AABBH + ERA     │      │
 │  │       │                      tier features                │      │

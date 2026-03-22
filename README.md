@@ -453,7 +453,7 @@ When `AlertEmail` is configured:
 | **Current Streak** | — | — |
 | **Longest Streak** | — | — |
 | **Dates Predicted** | — | — |
-| **Season Start** | March 27, 2026 | — |
+| **Season Start** | March 25, 2026 | — |
 
 ### Daily Log
 

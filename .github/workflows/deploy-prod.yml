@@ -1,16 +1,16 @@
-name: Deploy to Test
+name: Deploy to Production
 
 on:
   push:
     branches:
-      - test
+      - main
 
 env:
   AWS_REGION: ${{ secrets.AWS_REGION }}
   ECR_REPOSITORY: beatthestreak
-  STACK_NAME: beatthestreak-test-stack
-  IMAGE_TAG: test
-  ENVIRONMENT: test
+  STACK_NAME: beatthestreak-prod-stack
+  IMAGE_TAG: latest
+  ENVIRONMENT: production
 
 jobs:
   deploy:
@@ -64,7 +64,10 @@ jobs:
               ImageTag=$IMAGE_TAG \
               ContainerPort=8080 \
               ForceRedeploy=$(date +%s) \
-              EnableScheduledPredictions=false \
+              EnableScheduledPredictions=true \
+              EnablePublicAPI=true \
+              EnableAutoRetrain=true \
+              AlertEmail=${{ secrets.ALERT_EMAIL }} \
             --no-fail-on-empty-changeset || true
 
       - name: Force new ECS deployment

@@ -230,7 +230,7 @@ curl -s http://$PUBLIC_IP:8080/health
 │                         AWS SERVICES                                │
 │                                                                     │
 │  EventBridge ──► Lambda (prediction_trigger, model_retrainer)       │
-│  S3 ──► QuickSight Dashboard                                       │
+│  S3 ──► QuickSight Dashboard                                        │
 │  SNS ──► Email Alerts (retrain results, accuracy warnings)          │
 │  API Gateway ──► VPC Link ──► ALB ──► ECS (customer API, gated)     │
 │  CloudWatch Logs ──► /ecs/test, /ecs/prod, /aws/lambda/*            │

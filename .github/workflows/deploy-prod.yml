@@ -45,14 +45,6 @@ jobs:
           docker push $REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           docker logout $REGISTRY
 
-      - name: Package Lambdas
-        run: |
-          cd mlb_predictor/lambda
-          zip prediction_trigger.zip prediction_trigger.py
-          zip model_retrainer.zip model_retrainer.py
-          aws s3 cp prediction_trigger.zip s3://mlb-hit-predictor-$ENVIRONMENT-bucket/lambda/
-          aws s3 cp model_retrainer.zip s3://mlb-hit-predictor-$ENVIRONMENT-bucket/lambda/
-
       - name: Deploy CloudFormation stack
         run: |
           set +e
@@ -83,6 +75,14 @@ jobs:
               exit 1
             fi
           fi
+
+      - name: Package Lambdas
+        run: |
+          cd mlb_predictor/lambda
+          zip prediction_trigger.zip prediction_trigger.py
+          zip model_retrainer.zip model_retrainer.py
+          aws s3 cp prediction_trigger.zip s3://mlb-hit-predictor-$ENVIRONMENT-bucket/lambda/
+          aws s3 cp model_retrainer.zip s3://mlb-hit-predictor-$ENVIRONMENT-bucket/lambda/
 
       - name: Force new ECS deployment
         run: |

@@ -384,10 +384,89 @@ Resources:
       SourceArn: !GetAtt EveningPredictionRule.Arn
 
   # ===========================================================================
+  # ACTUALS CHECKER — Fills previous day hit/miss results (production only)
+  # ===========================================================================
+
+  ActualsCheckerFunction:
+    Type: AWS::Lambda::Function
+    Condition: ScheduleEnabled
+    Properties:
+      FunctionName: !Sub ${Environment}-actuals-checker
+      Runtime: python3.12
+      Handler: check_actuals.handler
+      Timeout: 900
+      MemorySize: 256
+      Role: !GetAtt ActualsCheckerRole.Arn
+      Environment:
+        Variables:
+          ENVIRONMENT: !Ref Environment
+      Code:
+        S3Bucket: !Sub mlb-hit-predictor-${Environment}-bucket
+        S3Key: lambda/check_actuals.zip
+
+  ActualsCheckerRole:
+    Type: AWS::IAM::Role
+    Condition: ScheduleEnabled
+    Properties:
+      RoleName: !Sub ${Environment}-actuals-checker-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: ActualsCheckerPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: "arn:aws:logs:*:*:*"
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource: !Sub "arn:aws:s3:::mlb-hit-predictor-${Environment}-bucket/predictions/*"
+
+  ActualsCheckerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Condition: ScheduleEnabled
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${Environment}-actuals-checker
+      RetentionInDays: 14
+
+  # Actuals check: 10:00 AM ET (14:00 UTC) — runs before morning prediction trigger
+  ActualsCheckerRule:
+    Type: AWS::Events::Rule
+    Condition: ScheduleEnabled
+    Properties:
+      Name: !Sub ${Environment}-actuals-checker
+      Description: "Morning actuals check — fill yesterday's hit/miss results (10:00 AM ET)"
+      ScheduleExpression: "cron(0 14 * 3-10 ? *)"
+      State: ENABLED
+      Targets:
+        - Id: ActualsCheckerTarget
+          Arn: !GetAtt ActualsCheckerFunction.Arn
+          Input: '{"trigger": "morning_actuals"}'
+
+  ActualsCheckerPermission:
+    Type: AWS::Lambda::Permission
+    Condition: ScheduleEnabled
+    Properties:
+      FunctionName: !Ref ActualsCheckerFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt ActualsCheckerRule.Arn
+
+  # ===========================================================================
   # AUTO-RETRAIN — Annual pre-season model retraining (production only)
   # ===========================================================================
 
-  # SNS topic for pipeline alerts (retrain results, accuracy warnings)
   AlertTopic:
     Type: AWS::SNS::Topic
     Condition: HasAlertEmail
@@ -403,7 +482,6 @@ Resources:
       Protocol: email
       Endpoint: !Ref AlertEmail
 
-  # Lambda: annual retrain + validation
   ModelRetrainerFunction:
     Type: AWS::Lambda::Function
     Condition: RetrainEnabled
@@ -411,7 +489,7 @@ Resources:
       FunctionName: !Sub ${Environment}-model-retrainer
       Runtime: python3.12
       Handler: model_retrainer.handler
-      Timeout: 900  # 15 min (Lambda max) — triggers training, doesn't wait for completion
+      Timeout: 900
       MemorySize: 128
       Role: !GetAtt ModelRetrainerRole.Arn
       Environment:
@@ -444,14 +522,12 @@ Resources:
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
-              # CloudWatch Logs
               - Effect: Allow
                 Action:
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                 Resource: "arn:aws:logs:*:*:*"
-              # ECS + EC2 read (discover task IP)
               - Effect: Allow
                 Action:
                   - ecs:ListTasks
@@ -461,7 +537,6 @@ Resources:
                 Action:
                   - ec2:DescribeNetworkInterfaces
                 Resource: "*"
-              # SNS publish (alerts)
               - Effect: Allow
                 Action:
                   - sns:Publish
@@ -474,7 +549,6 @@ Resources:
       LogGroupName: !Sub /aws/lambda/${Environment}-model-retrainer
       RetentionInDays: 30
 
-  # Annual trigger: February 15 at 3:00 PM UTC (10:00 AM ET)
   AnnualRetrainRule:
     Type: AWS::Events::Rule
     Condition: RetrainEnabled
@@ -500,10 +574,6 @@ Resources:
   # ===========================================================================
   # PUBLIC API — API GATEWAY + ALB (production only, when enabled)
   # ===========================================================================
-
-  # --------------------------------------------------------------------------
-  # Application Load Balancer (internal, fronts ECS for API Gateway)
-  # --------------------------------------------------------------------------
 
   ALBSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -558,10 +628,6 @@ Resources:
         Type: forward
         TargetGroupArn: !Ref ALBTargetGroup
 
-  # --------------------------------------------------------------------------
-  # API Gateway (REST API)
-  # --------------------------------------------------------------------------
-
   BeatTheStreakAPI:
     Type: AWS::ApiGateway::RestApi
     Condition: APIEnabled
@@ -572,7 +638,6 @@ Resources:
         Types:
           - REGIONAL
 
-  # VPC Link connects API Gateway to internal ALB
   VpcLink:
     Type: AWS::ApiGateway::VpcLink
     Condition: APIEnabled
@@ -581,7 +646,6 @@ Resources:
       TargetArns:
         - !Ref ApplicationLoadBalancer
 
-  # /v1
   V1Resource:
     Type: AWS::ApiGateway::Resource
     Condition: APIEnabled
@@ -590,7 +654,6 @@ Resources:
       ParentId: !GetAtt BeatTheStreakAPI.RootResourceId
       PathPart: v1
 
-  # /v1/picks
   PicksResource:
     Type: AWS::ApiGateway::Resource
     Condition: APIEnabled
@@ -599,7 +662,6 @@ Resources:
       ParentId: !Ref V1Resource
       PathPart: picks
 
-  # /v1/picks/daily
   PicksDailyResource:
     Type: AWS::ApiGateway::Resource
     Condition: APIEnabled
@@ -630,7 +692,6 @@ Resources:
           integration.request.querystring.date: method.request.querystring.date
           integration.request.querystring.top_n: method.request.querystring.top_n
 
-  # /v1/picks/{date}
   PicksByDateResource:
     Type: AWS::ApiGateway::Resource
     Condition: APIEnabled
@@ -661,7 +722,6 @@ Resources:
           integration.request.path.date: method.request.path.date
           integration.request.querystring.top_n: method.request.querystring.top_n
 
-  # /v1/confidence
   ConfidenceResource:
     Type: AWS::ApiGateway::Resource
     Condition: APIEnabled
@@ -670,7 +730,6 @@ Resources:
       ParentId: !Ref V1Resource
       PathPart: confidence
 
-  # /v1/confidence/{player_id}
   ConfidencePlayerResource:
     Type: AWS::ApiGateway::Resource
     Condition: APIEnabled
@@ -701,7 +760,6 @@ Resources:
           integration.request.path.player_id: method.request.path.player_id
           integration.request.querystring.date: method.request.querystring.date
 
-  # /v1/health (no API key required)
   HealthAPIResource:
     Type: AWS::ApiGateway::Resource
     Condition: APIEnabled
@@ -726,7 +784,6 @@ Resources:
         ConnectionType: VPC_LINK
         ConnectionId: !Ref VpcLink
 
-  # /v1/meta (no API key required)
   MetaResource:
     Type: AWS::ApiGateway::Resource
     Condition: APIEnabled
@@ -750,10 +807,6 @@ Resources:
         Uri: !Sub http://${ApplicationLoadBalancer.DNSName}/v1/meta
         ConnectionType: VPC_LINK
         ConnectionId: !Ref VpcLink
-
-  # --------------------------------------------------------------------------
-  # Usage Plans + Deployment
-  # --------------------------------------------------------------------------
 
   APIDeployment:
     Type: AWS::ApiGateway::Deployment
@@ -782,7 +835,6 @@ Resources:
           ThrottlingRateLimit: 100
           ThrottlingBurstLimit: 200
 
-  # Basic tier: top 5 picks, 100 calls/day
   BasicUsagePlan:
     Type: AWS::ApiGateway::UsagePlan
     Condition: APIEnabled
@@ -800,7 +852,6 @@ Resources:
         - ApiId: !Ref BeatTheStreakAPI
           Stage: !Ref APIStage
 
-  # Pro tier: full predictions + features, 1000 calls/day
   ProUsagePlan:
     Type: AWS::ApiGateway::UsagePlan
     Condition: APIEnabled
@@ -818,7 +869,6 @@ Resources:
         - ApiId: !Ref BeatTheStreakAPI
           Stage: !Ref APIStage
 
-  # Enterprise tier: unlimited, real-time, SHAP
   EnterpriseUsagePlan:
     Type: AWS::ApiGateway::UsagePlan
     Condition: APIEnabled
@@ -835,10 +885,6 @@ Resources:
       ApiStages:
         - ApiId: !Ref BeatTheStreakAPI
           Stage: !Ref APIStage
-
-  # --------------------------------------------------------------------------
-  # Custom Domain (optional)
-  # --------------------------------------------------------------------------
 
   CustomDomain:
     Type: AWS::ApiGateway::DomainName
@@ -859,7 +905,6 @@ Resources:
       RestApiId: !Ref BeatTheStreakAPI
       Stage: !Ref Environment
 
-  # API Gateway CloudWatch logs
   APILogGroup:
     Type: AWS::Logs::LogGroup
     Condition: APIEnabled
@@ -882,7 +927,6 @@ Outputs:
   Environment:
     Value: !Ref Environment
 
-  # EventBridge outputs
   MorningSchedule:
     Condition: ScheduleEnabled
     Value: "11:30 AM ET daily (March-October)"
@@ -891,12 +935,19 @@ Outputs:
     Condition: ScheduleEnabled
     Value: "5:00 PM ET daily (March-October)"
     Description: Evening prediction trigger for night game lineups
+  ActualsCheckerSchedule:
+    Condition: ScheduleEnabled
+    Value: "10:00 AM ET daily (March-October)"
+    Description: Morning actuals checker — fills previous day results
   PredictionTriggerLambda:
     Condition: ScheduleEnabled
     Value: !Ref PredictionTriggerFunction
     Description: Lambda function that triggers daily predictions
+  ActualsCheckerLambda:
+    Condition: ScheduleEnabled
+    Value: !Ref ActualsCheckerFunction
+    Description: Lambda function that fills in previous day hit/miss results
 
-  # API Gateway outputs
   APIEndpoint:
     Condition: APIEnabled
     Value: !Sub https://${BeatTheStreakAPI}.execute-api.${AWS::Region}.amazonaws.com/${Environment}
@@ -922,7 +973,6 @@ Outputs:
     Value: !Ref EnterpriseUsagePlan
     Description: Attach Enterprise tier API keys to this usage plan
 
-  # Auto-retrain outputs
   RetrainSchedule:
     Condition: RetrainEnabled
     Value: "February 15, 10:00 AM ET annually"

@@ -8,7 +8,7 @@ on:
 env:
   AWS_REGION: ${{ secrets.AWS_REGION }}
   ECR_REPOSITORY: beatthestreak
-  STACK_NAME: beatthestreak-stack
+  STACK_NAME: beatthestreak-prod-stack
   IMAGE_TAG: latest
   ENVIRONMENT: production
 
@@ -81,8 +81,10 @@ jobs:
           cd mlb_predictor/lambda
           zip prediction_trigger.zip prediction_trigger.py
           zip model_retrainer.zip model_retrainer.py
+          zip check_actuals.zip check_actuals.py
           aws s3 cp prediction_trigger.zip s3://mlb-hit-predictor-$ENVIRONMENT-bucket/lambda/
           aws s3 cp model_retrainer.zip s3://mlb-hit-predictor-$ENVIRONMENT-bucket/lambda/
+          aws s3 cp check_actuals.zip s3://mlb-hit-predictor-$ENVIRONMENT-bucket/lambda/
 
       - name: Force new ECS deployment
         run: |

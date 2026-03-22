@@ -761,6 +761,15 @@ def write_predictions_to_s3(df: pd.DataFrame, date_str: str):
                 "top1_hits": 0,
                 "top1_misses": 0,
                 "top1_hit_rate_pct": 0.0,
+                "top2_hits": 0,
+                "top2_misses": 0,
+                "top2_hit_rate_pct": 0.0,
+                "top5_hits": 0,
+                "top5_misses": 0,
+                "top5_hit_rate_pct": 0.0,
+                "top10_hits": 0,
+                "top10_misses": 0,
+                "top10_hit_rate_pct": 0.0,
                 "current_streak": 0,
                 "longest_streak": 0,
                 "season": date_str[:4],
@@ -775,12 +784,21 @@ def write_predictions_to_s3(df: pd.DataFrame, date_str: str):
 
         # Today's top pick entry (result populated tomorrow when actuals arrive)
         top1 = df.iloc[0]
+        top2 = df.head(2)["player_name"].tolist()
+        top5 = df.head(5)["player_name"].tolist()
+        top10 = df.head(10)["player_name"].tolist()
         today_entry = {
             "date": date_str,
             "top_pick": top1["player_name"],
             "team": top1["team"],
             "confidence": round(float(top1["confidence_pct"]), 1),
-            "top1_hit": None,   # filled in next morning when game results arrive
+            "top2_picks": top2,
+            "top5_picks": top5,
+            "top10_picks": top10,
+            "top1_hit": None,    # filled in next morning when game results arrive
+            "top2_hit": None,    # at least 1 of top 2 got a hit
+            "top5_hit": None,    # at least 1 of top 5 got a hit
+            "top10_hit": None,   # at least 1 of top 10 got a hit
             "streak": summary.get("current_streak", 0),
         }
 

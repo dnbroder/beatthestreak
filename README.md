@@ -126,8 +126,8 @@ On every push to `main`:
 1. GitHub Actions authenticates to AWS via `mlb-cicd-role` (OIDC federation)
 2. Builds the Docker image from the repository `Dockerfile`
 3. Pushes the image to Amazon ECR
-4. Packages and uploads Lambda functions to S3
-5. Deploys/updates the CloudFormation stack
+4. Deploys/updates the CloudFormation stack
+5. Packages and uploads Lambda functions to S3
 6. Updates the ECS Fargate service to pull the new image
 7. ECS performs a rolling deployment (health check validated before traffic cutover)
 
@@ -170,12 +170,33 @@ All gates require `Environment=production` (except `HasAlertEmail`). The test en
 Two parallel environments share the same architecture:
 
 - **Test** (`test-cluster`): Development and validation. Train, tune, backtest here. All gates default to false.
-- **Production** (`prod-cluster`): Live predictions for the season. Enable gates as needed.
+- **Production** (`production-cluster`): Live predictions for the season. Enable gates as needed.
+
+### First-Time Deployment Bootstrap
+
+> **Important:** On first deployment, the S3 bucket must be created and Lambda zips uploaded **before** pushing to main, because CloudFormation needs the zips to create the Lambda functions.
+
+```bash
+# Step 1: Create the S3 bucket manually
+aws s3 mb s3://mlb-hit-predictor-production-bucket --region us-east-1
+
+# Step 2: Upload Lambda zips
+cd ~/beatthestreak/mlb_predictor/lambda
+zip prediction_trigger.zip prediction_trigger.py
+zip model_retrainer.zip model_retrainer.py
+aws s3 cp prediction_trigger.zip s3://mlb-hit-predictor-production-bucket/lambda/
+aws s3 cp model_retrainer.zip s3://mlb-hit-predictor-production-bucket/lambda/
+
+# Step 3: Push to main — CloudFormation deploys cleanly
+git commit --allow-empty -m "chore: trigger deployment" && git push origin main
+```
+
+On subsequent deployments the CI/CD pipeline handles Lambda packaging automatically.
 
 ### Post-Deployment: Getting the Public IP
 
 ```bash
-CLUSTER=test-cluster
+CLUSTER=production-cluster
 TASK_ARN=$(aws ecs list-tasks --cluster $CLUSTER --query 'taskArns[0]' --output text)
 PUBLIC_IP=$(aws ecs describe-tasks --cluster $CLUSTER --tasks $TASK_ARN \
   --query 'tasks[0].attachments[0].details[?name==`networkInterfaceId`].value' \
@@ -196,7 +217,7 @@ curl -s http://$PUBLIC_IP:8080/health
 ┌─────────────────────────────────────────────────────────────────────┐
 │                        DEVELOPER WORKFLOW                           │
 │                                                                     │
-│  VS Code ──► GitHub (main) ──► GitHub Actions ──► ECR ──► ECS       │
+│  VS Code ──► GitHub (main) ──► GitHub Actions ──► ECR ──► ECS      │
 │                                   (mlb-cicd-role)                   │
 └─────────────────────────────────────────────────────────────────────┘
                                                         │
@@ -205,10 +226,10 @@ curl -s http://$PUBLIC_IP:8080/health
 │                        ECS FARGATE CLUSTER                          │
 │                                                                     │
 │  ┌───────────────────────────────────────────────────────────┐      │
-│  │                   FastAPI Application                     │      │
+│  │                   FastAPI Application                      │      │
 │  │                                                           │      │
 │  │  /train/full ─── historical_data.py ─── MLB Stats API     │      │
-│  │       │              (2000-2024)                          │      │
+│  │       │              (2000-2024)                           │      │
 │  │       ▼                                                   │      │
 │  │  feature_engineering.py ──► 26 features + AABBH + ERA     │      │
 │  │       │                      tier features                │      │
@@ -233,7 +254,7 @@ curl -s http://$PUBLIC_IP:8080/health
 │  S3 ──► QuickSight Dashboard                                        │
 │  SNS ──► Email Alerts (retrain results, accuracy warnings)          │
 │  API Gateway ──► VPC Link ──► ALB ──► ECS (customer API, gated)     │
-│  CloudWatch Logs ──► /ecs/test, /ecs/prod, /aws/lambda/*            │
+│  CloudWatch Logs ──► /ecs/production, /aws/lambda/*                 │
 │                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
 ```
@@ -241,7 +262,7 @@ curl -s http://$PUBLIC_IP:8080/health
 ### Module Dependency Map
 
 ```
-main.py (FastAPI entrypoint, v1.3)
+main.py (FastAPI entrypoint, v2.0)
 ├── historical_data.py      ← MLB Stats API data pulls, schedule enrichment
 ├── feature_engineering.py  ← 26-feature pipeline, rolling stats, AABBH, ERA tiers
 ├── model.py                ← XGBoost training, calibration, save/load
@@ -436,7 +457,7 @@ When `AlertEmail` is configured:
 | v1.1.0 | 2026-02-14 | Lineup pre-check, doubleheader handling, AABBH fallback | **76.7%** (69/90), 13-game streak |
 | v1.2.0 | 2026-02-15 | ERA tier features (26 features), calibration fix, EventBridge + Lambda | **78.9%** (71/90), **21-game streak** |
 | v1.3.0 | 2026-02-16 | Cross-era validation (78.1%, 179 dates), verbose logging fix, auto-retrain Lambda + SNS alerts, API Gateway + ALB + usage plans, customer endpoints, single-stack feature gates | **78.1%** cross-era (139/178), **21-game streak** |
-| v2.0.0 | 2026-03-22 | Production deployment — live API feed, EventBridge daily scheduling, S3→QuickSight pipeline, summary.json + daily_log.json for README auto-update, deploy-prod.yml CI/CD workflow, CloudFormation error handling | **Live as of Opening Day March 25, 2026** |
+| v2.0.0 | 2026-03-22 | Production deployment — live API feed, EventBridge daily scheduling, S3→QuickSight pipeline, summary.json + daily_log.json for README auto-update, deploy-prod.yml CI/CD workflow, CloudFormation error handling, Top 1/2/5/10 hit rate tracking | **Live as of Opening Day March 25, 2026** |
 
 ---
 
@@ -450,16 +471,19 @@ When `AlertEmail` is configured:
 | Metric | Value | Updated |
 |--------|-------|---------|
 | **Top-1 Hit Rate** | — | — |
-| **Current Streak** | — | — |
-| **Longest Streak** | — | — |
+| **Top-2 Hit Rate** | — | — |
+| **Top-5 Hit Rate** | — | — |
+| **Top-10 Hit Rate** | — | — |
+| **Current Streak (Top-1)** | — | — |
+| **Longest Streak (Top-1)** | — | — |
 | **Dates Predicted** | — | — |
 | **Season Start** | March 25, 2026 | — |
 
 ### Daily Log
 
-| Date | Top Pick | Team | Confidence | Result | Streak |
-|------|----------|------|------------|--------|--------|
-| *Populates after Opening Day (March 25, 2026)* | | | | | |
+| Date | Top Pick | Team | Confidence | Top-1 | Top-2 | Top-5 | Top-10 | Streak |
+|------|----------|------|------------|-------|-------|-------|--------|--------|
+| *Populates after Opening Day (March 25, 2026)* | | | | | | | | |
 
 ### How Results Are Logged
 
@@ -470,7 +494,7 @@ s3://mlb-hit-predictor-production-bucket/
 ├── predictions/latest/
 │   ├── top10_picks.csv       ← Top 10 picks (QuickSight)
 │   ├── all_predictions.csv   ← Full ranked list (QuickSight)
-│   ├── summary.json          ← Running season metrics
+│   ├── summary.json          ← Running season metrics (Top 1/2/5/10)
 │   └── daily_log.json        ← Per-day pick + result log
 └── predictions/{date}/
     ├── top10_picks.csv

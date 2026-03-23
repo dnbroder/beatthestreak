@@ -672,6 +672,7 @@ Resources:
       ApiId: !Ref BeatTheStreakAPI
       StageName: !Ref Environment
       AutoDeploy: true
+      Tags: {}
       DefaultRouteSettings:
         ThrottlingRateLimit: 100
         ThrottlingBurstLimit: 200

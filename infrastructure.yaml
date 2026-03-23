@@ -572,8 +572,25 @@ Resources:
       SourceArn: !GetAtt AnnualRetrainRule.Arn
 
   # ===========================================================================
-  # PUBLIC API — API GATEWAY + ALB (production only, when enabled)
+  # PUBLIC API — API GATEWAY V2 (HTTP API) + ALB (production only, when enabled)
   # ===========================================================================
+  # Uses AWS::ApiGatewayV2 (HTTP API) instead of REST API (v1).
+  # HTTP API connects directly to the ALB via VPC Link — no NLB needed.
+  # Benefits: lower latency, 70% cheaper, native JWT auth, ALB direct support.
+  # All sports models (baseball, golf, basketball) share this single gateway.
+  # ===========================================================================
+
+  # VPC Link connects HTTP API Gateway directly to internal ALB
+  VpcLink:
+    Type: AWS::ApiGatewayV2::VpcLink
+    Condition: APIEnabled
+    Properties:
+      Name: !Sub ${Environment}-bts-vpc-link
+      SubnetIds:
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
+      SecurityGroupIds:
+        - !Ref ALBSecurityGroup
 
   ALBSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -583,8 +600,8 @@ Resources:
       VpcId: !Ref VPC
       SecurityGroupIngress:
         - IpProtocol: tcp
-          FromPort: 80
-          ToPort: 80
+          FromPort: 8080
+          ToPort: 8080
           CidrIp: 10.0.0.0/16
 
   ApplicationLoadBalancer:
@@ -622,295 +639,188 @@ Resources:
     Condition: APIEnabled
     Properties:
       LoadBalancerArn: !Ref ApplicationLoadBalancer
-      Port: 80
+      Port: 8080
       Protocol: HTTP
       DefaultActions:
-        Type: forward
-        TargetGroupArn: !Ref ALBTargetGroup
+        - Type: forward
+          TargetGroupArn: !Ref ALBTargetGroup
 
+  # HTTP API (v2)
   BeatTheStreakAPI:
-    Type: AWS::ApiGateway::RestApi
+    Type: AWS::ApiGatewayV2::Api
     Condition: APIEnabled
     Properties:
       Name: !Sub ${Environment}-beatthestreak-api
-      Description: BeatTheStreak Hit Prediction API
-      EndpointConfiguration:
-        Types:
-          - REGIONAL
+      Description: BeatTheStreak Multi-Sport Prediction API
+      ProtocolType: HTTP
+      CorsConfiguration:
+        AllowOrigins:
+          - "*"
+        AllowMethods:
+          - GET
+          - OPTIONS
+        AllowHeaders:
+          - Authorization
+          - Content-Type
+          - x-api-key
 
-  VpcLink:
-    Type: AWS::ApiGateway::VpcLink
-    Condition: APIEnabled
-    Properties:
-      Name: !Sub ${Environment}-bts-vpc-link
-      TargetArns:
-        - !Ref ApplicationLoadBalancer
-
-  V1Resource:
-    Type: AWS::ApiGateway::Resource
-    Condition: APIEnabled
-    Properties:
-      RestApiId: !Ref BeatTheStreakAPI
-      ParentId: !GetAtt BeatTheStreakAPI.RootResourceId
-      PathPart: v1
-
-  PicksResource:
-    Type: AWS::ApiGateway::Resource
-    Condition: APIEnabled
-    Properties:
-      RestApiId: !Ref BeatTheStreakAPI
-      ParentId: !Ref V1Resource
-      PathPart: picks
-
-  PicksDailyResource:
-    Type: AWS::ApiGateway::Resource
-    Condition: APIEnabled
-    Properties:
-      RestApiId: !Ref BeatTheStreakAPI
-      ParentId: !Ref PicksResource
-      PathPart: daily
-
-  PicksDailyMethod:
-    Type: AWS::ApiGateway::Method
-    Condition: APIEnabled
-    Properties:
-      RestApiId: !Ref BeatTheStreakAPI
-      ResourceId: !Ref PicksDailyResource
-      HttpMethod: GET
-      AuthorizationType: NONE
-      ApiKeyRequired: true
-      RequestParameters:
-        method.request.querystring.date: false
-        method.request.querystring.top_n: false
-      Integration:
-        Type: HTTP_PROXY
-        IntegrationHttpMethod: GET
-        Uri: !Sub http://${ApplicationLoadBalancer.DNSName}/v1/picks/daily
-        ConnectionType: VPC_LINK
-        ConnectionId: !Ref VpcLink
-        RequestParameters:
-          integration.request.querystring.date: method.request.querystring.date
-          integration.request.querystring.top_n: method.request.querystring.top_n
-
-  PicksByDateResource:
-    Type: AWS::ApiGateway::Resource
-    Condition: APIEnabled
-    Properties:
-      RestApiId: !Ref BeatTheStreakAPI
-      ParentId: !Ref PicksResource
-      PathPart: "{date}"
-
-  PicksByDateMethod:
-    Type: AWS::ApiGateway::Method
-    Condition: APIEnabled
-    Properties:
-      RestApiId: !Ref BeatTheStreakAPI
-      ResourceId: !Ref PicksByDateResource
-      HttpMethod: GET
-      AuthorizationType: NONE
-      ApiKeyRequired: true
-      RequestParameters:
-        method.request.path.date: true
-        method.request.querystring.top_n: false
-      Integration:
-        Type: HTTP_PROXY
-        IntegrationHttpMethod: GET
-        Uri: !Sub http://${ApplicationLoadBalancer.DNSName}/v1/picks/{date}
-        ConnectionType: VPC_LINK
-        ConnectionId: !Ref VpcLink
-        RequestParameters:
-          integration.request.path.date: method.request.path.date
-          integration.request.querystring.top_n: method.request.querystring.top_n
-
-  ConfidenceResource:
-    Type: AWS::ApiGateway::Resource
-    Condition: APIEnabled
-    Properties:
-      RestApiId: !Ref BeatTheStreakAPI
-      ParentId: !Ref V1Resource
-      PathPart: confidence
-
-  ConfidencePlayerResource:
-    Type: AWS::ApiGateway::Resource
-    Condition: APIEnabled
-    Properties:
-      RestApiId: !Ref BeatTheStreakAPI
-      ParentId: !Ref ConfidenceResource
-      PathPart: "{player_id}"
-
-  ConfidencePlayerMethod:
-    Type: AWS::ApiGateway::Method
-    Condition: APIEnabled
-    Properties:
-      RestApiId: !Ref BeatTheStreakAPI
-      ResourceId: !Ref ConfidencePlayerResource
-      HttpMethod: GET
-      AuthorizationType: NONE
-      ApiKeyRequired: true
-      RequestParameters:
-        method.request.path.player_id: true
-        method.request.querystring.date: false
-      Integration:
-        Type: HTTP_PROXY
-        IntegrationHttpMethod: GET
-        Uri: !Sub http://${ApplicationLoadBalancer.DNSName}/v1/confidence/{player_id}
-        ConnectionType: VPC_LINK
-        ConnectionId: !Ref VpcLink
-        RequestParameters:
-          integration.request.path.player_id: method.request.path.player_id
-          integration.request.querystring.date: method.request.querystring.date
-
-  HealthAPIResource:
-    Type: AWS::ApiGateway::Resource
-    Condition: APIEnabled
-    Properties:
-      RestApiId: !Ref BeatTheStreakAPI
-      ParentId: !Ref V1Resource
-      PathPart: health
-
-  HealthAPIMethod:
-    Type: AWS::ApiGateway::Method
-    Condition: APIEnabled
-    Properties:
-      RestApiId: !Ref BeatTheStreakAPI
-      ResourceId: !Ref HealthAPIResource
-      HttpMethod: GET
-      AuthorizationType: NONE
-      ApiKeyRequired: false
-      Integration:
-        Type: HTTP_PROXY
-        IntegrationHttpMethod: GET
-        Uri: !Sub http://${ApplicationLoadBalancer.DNSName}/v1/health
-        ConnectionType: VPC_LINK
-        ConnectionId: !Ref VpcLink
-
-  MetaResource:
-    Type: AWS::ApiGateway::Resource
-    Condition: APIEnabled
-    Properties:
-      RestApiId: !Ref BeatTheStreakAPI
-      ParentId: !Ref V1Resource
-      PathPart: meta
-
-  MetaMethod:
-    Type: AWS::ApiGateway::Method
-    Condition: APIEnabled
-    Properties:
-      RestApiId: !Ref BeatTheStreakAPI
-      ResourceId: !Ref MetaResource
-      HttpMethod: GET
-      AuthorizationType: NONE
-      ApiKeyRequired: false
-      Integration:
-        Type: HTTP_PROXY
-        IntegrationHttpMethod: GET
-        Uri: !Sub http://${ApplicationLoadBalancer.DNSName}/v1/meta
-        ConnectionType: VPC_LINK
-        ConnectionId: !Ref VpcLink
-
-  APIDeployment:
-    Type: AWS::ApiGateway::Deployment
-    Condition: APIEnabled
-    DependsOn:
-      - PicksDailyMethod
-      - PicksByDateMethod
-      - ConfidencePlayerMethod
-      - HealthAPIMethod
-      - MetaMethod
-    Properties:
-      RestApiId: !Ref BeatTheStreakAPI
-
+  # API Stage
   APIStage:
-    Type: AWS::ApiGateway::Stage
+    Type: AWS::ApiGatewayV2::Stage
     Condition: APIEnabled
     Properties:
-      RestApiId: !Ref BeatTheStreakAPI
-      DeploymentId: !Ref APIDeployment
+      ApiId: !Ref BeatTheStreakAPI
       StageName: !Ref Environment
-      MethodSettings:
-        - ResourcePath: "/*"
-          HttpMethod: "*"
-          LoggingLevel: INFO
-          MetricsEnabled: true
-          ThrottlingRateLimit: 100
-          ThrottlingBurstLimit: 200
+      AutoDeploy: true
+      DefaultRouteSettings:
+        ThrottlingRateLimit: 100
+        ThrottlingBurstLimit: 200
 
-  BasicUsagePlan:
-    Type: AWS::ApiGateway::UsagePlan
+  # ALB integration — all routes proxy through to ECS via ALB
+  ALBIntegration:
+    Type: AWS::ApiGatewayV2::Integration
     Condition: APIEnabled
-    DependsOn: APIStage
     Properties:
-      UsagePlanName: !Sub ${Environment}-basic
-      Description: "Basic: top 5 picks, 100 requests/day"
-      Throttle:
-        RateLimit: 5
-        BurstLimit: 10
-      Quota:
-        Limit: 100
-        Period: DAY
-      ApiStages:
-        - ApiId: !Ref BeatTheStreakAPI
-          Stage: !Ref APIStage
+      ApiId: !Ref BeatTheStreakAPI
+      IntegrationType: HTTP_PROXY
+      IntegrationMethod: ANY
+      IntegrationUri: !GetAtt ALBListener.ListenerArn
+      ConnectionType: VPC_LINK
+      ConnectionId: !Ref VpcLink
+      PayloadFormatVersion: "1.0"
 
-  ProUsagePlan:
-    Type: AWS::ApiGateway::UsagePlan
+  # --------------------------------------------------------------------------
+  # Routes — Baseball
+  # --------------------------------------------------------------------------
+
+  RouteBaseballPicksDaily:
+    Type: AWS::ApiGatewayV2::Route
     Condition: APIEnabled
-    DependsOn: APIStage
     Properties:
-      UsagePlanName: !Sub ${Environment}-pro
-      Description: "Pro: full predictions with features, 1000 requests/day"
-      Throttle:
-        RateLimit: 20
-        BurstLimit: 50
-      Quota:
-        Limit: 1000
-        Period: DAY
-      ApiStages:
-        - ApiId: !Ref BeatTheStreakAPI
-          Stage: !Ref APIStage
+      ApiId: !Ref BeatTheStreakAPI
+      RouteKey: "GET /v1/baseball/picks/daily"
+      AuthorizationType: NONE
+      ApiKeyRequired: false
+      Target: !Sub integrations/${ALBIntegration}
 
-  EnterpriseUsagePlan:
-    Type: AWS::ApiGateway::UsagePlan
+  RouteBaseballPicksByDate:
+    Type: AWS::ApiGatewayV2::Route
     Condition: APIEnabled
-    DependsOn: APIStage
     Properties:
-      UsagePlanName: !Sub ${Environment}-enterprise
-      Description: "Enterprise: unlimited, full feature access"
-      Throttle:
-        RateLimit: 100
-        BurstLimit: 200
-      Quota:
-        Limit: 50000
-        Period: DAY
-      ApiStages:
-        - ApiId: !Ref BeatTheStreakAPI
-          Stage: !Ref APIStage
+      ApiId: !Ref BeatTheStreakAPI
+      RouteKey: "GET /v1/baseball/picks/{date}"
+      AuthorizationType: NONE
+      ApiKeyRequired: false
+      Target: !Sub integrations/${ALBIntegration}
 
-  CustomDomain:
-    Type: AWS::ApiGateway::DomainName
-    Condition: HasCustomDomain
+  RouteBaseballConfidence:
+    Type: AWS::ApiGatewayV2::Route
+    Condition: APIEnabled
     Properties:
-      DomainName: !Ref DomainName
-      RegionalCertificateArn: !Ref CertificateArn
-      EndpointConfiguration:
-        Types:
-          - REGIONAL
+      ApiId: !Ref BeatTheStreakAPI
+      RouteKey: "GET /v1/baseball/confidence/{player_id}"
+      AuthorizationType: NONE
+      ApiKeyRequired: false
+      Target: !Sub integrations/${ALBIntegration}
 
-  DomainMapping:
-    Type: AWS::ApiGateway::BasePathMapping
-    Condition: HasCustomDomain
-    DependsOn: APIStage
+  # --------------------------------------------------------------------------
+  # Routes — Golf
+  # --------------------------------------------------------------------------
+
+  RouteGolfPicksTournament:
+    Type: AWS::ApiGatewayV2::Route
+    Condition: APIEnabled
     Properties:
-      DomainName: !Ref CustomDomain
-      RestApiId: !Ref BeatTheStreakAPI
-      Stage: !Ref Environment
+      ApiId: !Ref BeatTheStreakAPI
+      RouteKey: "GET /v1/golf/picks/tournament"
+      AuthorizationType: NONE
+      ApiKeyRequired: false
+      Target: !Sub integrations/${ALBIntegration}
 
+  RouteGolfPicksByDate:
+    Type: AWS::ApiGatewayV2::Route
+    Condition: APIEnabled
+    Properties:
+      ApiId: !Ref BeatTheStreakAPI
+      RouteKey: "GET /v1/golf/picks/{date}"
+      AuthorizationType: NONE
+      ApiKeyRequired: false
+      Target: !Sub integrations/${ALBIntegration}
+
+  # --------------------------------------------------------------------------
+  # Routes — Basketball
+  # --------------------------------------------------------------------------
+
+  RouteNBAPicksDaily:
+    Type: AWS::ApiGatewayV2::Route
+    Condition: APIEnabled
+    Properties:
+      ApiId: !Ref BeatTheStreakAPI
+      RouteKey: "GET /v1/basketball/picks/daily"
+      AuthorizationType: NONE
+      ApiKeyRequired: false
+      Target: !Sub integrations/${ALBIntegration}
+
+  RouteNBAPicksByDate:
+    Type: AWS::ApiGatewayV2::Route
+    Condition: APIEnabled
+    Properties:
+      ApiId: !Ref BeatTheStreakAPI
+      RouteKey: "GET /v1/basketball/picks/{date}"
+      AuthorizationType: NONE
+      ApiKeyRequired: false
+      Target: !Sub integrations/${ALBIntegration}
+
+  # --------------------------------------------------------------------------
+  # Shared routes — health + meta (no auth)
+  # --------------------------------------------------------------------------
+
+  RouteHealth:
+    Type: AWS::ApiGatewayV2::Route
+    Condition: APIEnabled
+    Properties:
+      ApiId: !Ref BeatTheStreakAPI
+      RouteKey: "GET /v1/health"
+      AuthorizationType: NONE
+      ApiKeyRequired: false
+      Target: !Sub integrations/${ALBIntegration}
+
+  RouteMeta:
+    Type: AWS::ApiGatewayV2::Route
+    Condition: APIEnabled
+    Properties:
+      ApiId: !Ref BeatTheStreakAPI
+      RouteKey: "GET /v1/meta"
+      AuthorizationType: NONE
+      ApiKeyRequired: false
+      Target: !Sub integrations/${ALBIntegration}
+
+  # API Gateway CloudWatch logs
   APILogGroup:
     Type: AWS::Logs::LogGroup
     Condition: APIEnabled
     Properties:
       LogGroupName: !Sub /aws/apigateway/${Environment}-beatthestreak-api
       RetentionInDays: 30
+
+  # Custom Domain (optional)
+  CustomDomain:
+    Type: AWS::ApiGatewayV2::DomainName
+    Condition: HasCustomDomain
+    Properties:
+      DomainName: !Ref DomainName
+      DomainNameConfigurations:
+        - CertificateArn: !Ref CertificateArn
+          EndpointType: REGIONAL
+
+  DomainMapping:
+    Type: AWS::ApiGatewayV2::ApiMapping
+    Condition: HasCustomDomain
+    DependsOn: APIStage
+    Properties:
+      DomainName: !Ref CustomDomain
+      ApiId: !Ref BeatTheStreakAPI
+      Stage: !Ref Environment
 
 # ===========================================================================
 # OUTPUTS
@@ -951,7 +861,7 @@ Outputs:
   APIEndpoint:
     Condition: APIEnabled
     Value: !Sub https://${BeatTheStreakAPI}.execute-api.${AWS::Region}.amazonaws.com/${Environment}
-    Description: Public API endpoint URL
+    Description: Public API endpoint URL (HTTP API v2)
   CustomDomainURL:
     Condition: HasCustomDomain
     Value: !Sub https://${DomainName}
@@ -960,18 +870,6 @@ Outputs:
     Condition: APIEnabled
     Value: !GetAtt ApplicationLoadBalancer.DNSName
     Description: Internal ALB DNS (not publicly accessible)
-  BasicUsagePlanId:
-    Condition: APIEnabled
-    Value: !Ref BasicUsagePlan
-    Description: Attach Basic tier API keys to this usage plan
-  ProUsagePlanId:
-    Condition: APIEnabled
-    Value: !Ref ProUsagePlan
-    Description: Attach Pro tier API keys to this usage plan
-  EnterpriseUsagePlanId:
-    Condition: APIEnabled
-    Value: !Ref EnterpriseUsagePlan
-    Description: Attach Enterprise tier API keys to this usage plan
 
   RetrainSchedule:
     Condition: RetrainEnabled

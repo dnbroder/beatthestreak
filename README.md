@@ -61,28 +61,70 @@ Resources:
             Condition:
               StringEquals:
                 token.actions.githubusercontent.com:aud: sts.amazonaws.com
-                token.actions.githubusercontent.com:sub: repo:{YourGitHubAccountUsernameGoesHere}/{YourGitHubRepositoryNameForThisApplicationGoesHere}:ref:refs/heads/main
+              StringLike:
+                token.actions.githubusercontent.com:sub:
+                  - repo:{YourGitHubUsernameGoesHere}/beatthestreak:ref:refs/heads/*
+                  - repo:{YourGitHubUsernameGoesHere}/golfpredictor:ref:refs/heads/*
+                  - repo:{YourGitHubUsernameGoesHere}/nbapredictor:ref:refs/heads/*
+                  - repo:{YourGitHubUsernameGoesHere}/nflpredictor:ref:refs/heads/*
       Policies:
         - PolicyName: CICDPipelinePolicy
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
-              - Effect: Allow
+              - Sid: GeneralPermissions
+                Effect: Allow
                 Action:
                   - cloudformation:CreateStack
                   - cloudformation:UpdateStack
+                  - cloudformation:DeleteStack
                   - cloudformation:DescribeStacks
                   - cloudformation:DescribeStackEvents
+                  - cloudformation:DescribeChangeSet
+                  - cloudformation:ListChangeSets
                   - cloudformation:GetTemplateSummary
+                  - cloudformation:GetTemplate
                   - cloudformation:ValidateTemplate
                   - cloudformation:CreateChangeSet
                   - cloudformation:ExecuteChangeSet
-                  - cloudformation:DeleteStack
+                  - cloudformation:DeleteChangeSet
+                  - cloudformation:ListStacks
+                  - cloudformation:ListStackResources
                   - iam:GetRole
                   - iam:PassRole
+                  - iam:CreateRole
+                  - iam:DeleteRole
+                  - iam:PutRolePolicy
+                  - iam:DeleteRolePolicy
+                  - iam:GetRolePolicy
+                  - iam:AttachRolePolicy
+                  - iam:DetachRolePolicy
+                  - iam:TagRole
+                  - iam:UntagRole
+                  - iam:ListRolePolicies
+                  - iam:ListAttachedRolePolicies
+                  - iam:CreateServiceLinkedRole
+                  - s3:CreateBucket
+                  - s3:DeleteBucket
                   - s3:PutObject
                   - s3:GetObject
+                  - s3:DeleteObject
                   - s3:ListBucket
+                  - s3:PutBucketVersioning
+                  - s3:GetBucketVersioning
+                  - s3:PutLifecycleConfiguration
+                  - s3:GetLifecycleConfiguration
+                  - s3:GetBucketLocation
+                  - s3:GetBucketPolicy
+                  - s3:PutBucketPolicy
+                  - sns:GetTopicAttributes
+                  - sns:SetTopicAttributes
+                  - sns:CreateTopic
+                  - sns:DeleteTopic
+                  - sns:Subscribe
+                  - sns:Unsubscribe
+                  - sns:ListSubscriptionsByTopic
+                  - sns:Publish
                   - kms:GenerateDataKey
                   - kms:Decrypt
                   - ecr:GetAuthorizationToken
@@ -93,13 +135,113 @@ Resources:
                   - ecr:GetDownloadUrlForLayer
                   - ecr:PutImage
                   - ecr:BatchGetImage
+                  - ecr:CreateRepository
+                  - ecr:DeleteRepository
+                  - ecr:DescribeRepositories
+                  - ecr:PutLifecyclePolicy
+                  - ecr:PutImageScanningConfiguration
+                  - ecs:CreateCluster
+                  - ecs:DeleteCluster
+                  - ecs:DescribeClusters
+                  - ecs:CreateService
+                  - ecs:DeleteService
                   - ecs:UpdateService
                   - ecs:ListServices
                   - ecs:DescribeServices
+                  - ecs:RegisterTaskDefinition
+                  - ecs:DeregisterTaskDefinition
+                  - ecs:DescribeTaskDefinition
                   - ecs:ListTasks
                   - ecs:DescribeTasks
+                  - ec2:CreateVpc
+                  - ec2:DeleteVpc
+                  - ec2:DescribeVpcs
+                  - ec2:ModifyVpcAttribute
+                  - ec2:CreateSubnet
+                  - ec2:DeleteSubnet
+                  - ec2:DescribeSubnets
+                  - ec2:CreateInternetGateway
+                  - ec2:DeleteInternetGateway
+                  - ec2:AttachInternetGateway
+                  - ec2:DetachInternetGateway
+                  - ec2:DescribeInternetGateways
+                  - ec2:CreateRouteTable
+                  - ec2:DeleteRouteTable
+                  - ec2:CreateRoute
+                  - ec2:DeleteRoute
+                  - ec2:DescribeRouteTables
+                  - ec2:AssociateRouteTable
+                  - ec2:DisassociateRouteTable
+                  - ec2:CreateSecurityGroup
+                  - ec2:DeleteSecurityGroup
+                  - ec2:DescribeSecurityGroups
+                  - ec2:AuthorizeSecurityGroupIngress
+                  - ec2:RevokeSecurityGroupIngress
+                  - ec2:CreateTags
+                  - ec2:DeleteTags
+                  - ec2:DescribeAvailabilityZones
                   - ec2:DescribeNetworkInterfaces
+                  - ec2:ModifySubnetAttribute
+                  - ec2:DescribeAccountAttributes
+                  - ec2:CreateVpcEndpointServiceConfiguration
+                  - ec2:DeleteVpcEndpointServiceConfigurations
+                  - ec2:DescribeVpcEndpointServiceConfigurations
+                  - ec2:ModifyVpcEndpointServicePermissions
+                  - elasticloadbalancing:CreateLoadBalancer
+                  - elasticloadbalancing:DeleteLoadBalancer
+                  - elasticloadbalancing:DescribeLoadBalancers
+                  - elasticloadbalancing:ModifyLoadBalancerAttributes
+                  - elasticloadbalancing:SetSecurityGroups
+                  - elasticloadbalancing:CreateListener
+                  - elasticloadbalancing:DeleteListener
+                  - elasticloadbalancing:DescribeListeners
+                  - elasticloadbalancing:ModifyListener
+                  - elasticloadbalancing:CreateTargetGroup
+                  - elasticloadbalancing:DeleteTargetGroup
+                  - elasticloadbalancing:DescribeTargetGroups
+                  - elasticloadbalancing:ModifyTargetGroup
+                  - elasticloadbalancing:ModifyTargetGroupAttributes
+                  - elasticloadbalancing:DescribeTargetGroupAttributes
+                  - elasticloadbalancing:DescribeTargetHealth
+                  - elasticloadbalancing:AddTags
+                  - elasticloadbalancing:RemoveTags
+                  - lambda:CreateFunction
+                  - lambda:DeleteFunction
+                  - lambda:UpdateFunctionCode
+                  - lambda:UpdateFunctionConfiguration
+                  - lambda:GetFunction
+                  - lambda:GetFunctionConfiguration
+                  - lambda:AddPermission
+                  - lambda:RemovePermission
+                  - lambda:InvokeFunction
+                  - lambda:ListFunctions
+                  - lambda:TagResource
+                  - lambda:UntagResource
+                  - events:PutRule
+                  - events:DeleteRule
+                  - events:DescribeRule
+                  - events:ListRules
+                  - events:PutTargets
+                  - events:RemoveTargets
+                  - events:ListTargetsByRule
+                  - events:EnableRule
+                  - events:DisableRule
+                  - events:TagResource
+                  - logs:CreateLogGroup
+                  - logs:DeleteLogGroup
+                  - logs:PutRetentionPolicy
+                  - logs:DescribeLogGroups
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogStreams
                 Resource: "*"
+              - Sid: APIGatewayAllOperations
+                Effect: Allow
+                Action: apigateway:*
+                Resource: "*"
+                # Note: apigateway:* wildcard required due to known AWS bug where
+                # CloudFormation reports TagResource permission errors for API Gateway v2
+                # resources. AWS is aware of this issue. Tighten when AWS resolves it.
 ```
 
 ### Required Tools
@@ -149,8 +291,7 @@ All infrastructure is defined in a single `infrastructure.yaml` template with fe
 | **Retrain Lambda** | Annual pre-season model retraining trigger | `EnableAutoRetrain` |
 | **Annual EventBridge Rule** | February 15 trigger for model retraining | `EnableAutoRetrain` |
 | **Application Load Balancer** | Internal ALB fronting ECS for API Gateway | `EnablePublicAPI` |
-| **API Gateway + VPC Link** | Customer-facing REST API with usage plans | `EnablePublicAPI` |
-| **Usage Plans (3 tiers)** | Basic / Pro / Enterprise rate limiting | `EnablePublicAPI` |
+| **API Gateway v2 (HTTP API) + VPC Link** | Multi-sport customer-facing API (baseball, golf, basketball) | `EnablePublicAPI` |
 | **Custom Domain** | api.beatthestreak.com (optional) | `DomainName` + `CertificateArn` |
 
 ### Feature Gates
@@ -217,7 +358,7 @@ curl -s http://$PUBLIC_IP:8080/health
 ┌─────────────────────────────────────────────────────────────────────┐
 │                        DEVELOPER WORKFLOW                           │
 │                                                                     │
-│  VS Code ──► GitHub (main) ──► GitHub Actions ──► ECR ──► ECS       │
+│  VS Code ──► GitHub (main) ──► GitHub Actions ──► ECR ──► ECS      │
 │                                   (mlb-cicd-role)                   │
 └─────────────────────────────────────────────────────────────────────┘
                                                         │
@@ -226,7 +367,7 @@ curl -s http://$PUBLIC_IP:8080/health
 │                        ECS FARGATE CLUSTER                          │
 │                                                                     │
 │  ┌───────────────────────────────────────────────────────────┐      │
-│  │                   FastAPI Application                     │      │
+│  │                   FastAPI Application                      │      │
 │  │                                                           │      │
 │  │  /train/full ─── historical_data.py ─── MLB Stats API     │      │
 │  │       │              (2000-2024)                           │      │
@@ -253,7 +394,7 @@ curl -s http://$PUBLIC_IP:8080/health
 │  EventBridge ──► Lambda (prediction_trigger, model_retrainer)       │
 │  S3 ──► QuickSight Dashboard                                        │
 │  SNS ──► Email Alerts (retrain results, accuracy warnings)          │
-│  API Gateway ──► VPC Link ──► ALB ──► ECS (customer API, gated)     │
+│  API Gateway v2 ──► VPC Link ──► ALB ──► ECS (customer API, gated)  │
 │  CloudWatch Logs ──► /ecs/production, /aws/lambda/*                 │
 │                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
@@ -273,7 +414,8 @@ main.py (FastAPI entrypoint, v2.0)
 ├── api_routes.py           ← Customer-facing API endpoints (/v1 prefix, gated)
 └── lambda/
     ├── prediction_trigger.py ← Daily prediction trigger (EventBridge → Lambda)
-    └── model_retrainer.py    ← Annual retrain trigger (EventBridge → Lambda)
+    ├── model_retrainer.py    ← Annual retrain trigger (EventBridge → Lambda)
+    └── check_actuals.py      ← Morning actuals checker (fills Top 1/2/5/10 results)
 ```
 
 ---
@@ -386,28 +528,29 @@ When `EnablePublicAPI=true`, a REST API is exposed via API Gateway. Customers re
 ### Architecture
 
 ```
-Customer → API Gateway (auth + rate limit) → VPC Link → ALB → ECS → /v1/*
+Customer → API Gateway v2 (HTTP API) → VPC Link → ALB → ECS → /v1/*
 ```
 
-### Usage Plan Tiers
-
-| Tier | Daily Picks | API Calls/Day | Fields |
-|------|-------------|---------------|--------|
-| **Basic** | Top 5 | 100 | Name, confidence |
-| **Pro** | Top 10 | 1,000 | + batting avg, AABBH, pitcher ERA |
-| **Enterprise** | Top 50 | 50,000 | All 26 features |
+HTTP API Gateway (v2) connects directly to the ALB via VPC Link — no NLB required.
+Lower latency, ~70% cheaper than REST API, native JWT auth for Stripe paywall integration.
+Single gateway serves all sports models under one unified API.
 
 ### Customer Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/v1/picks/daily` | Today's ranked predictions |
-| `GET` | `/v1/picks/{date}` | Historical predictions |
-| `GET` | `/v1/confidence/{player_id}` | Single player score |
+| `GET` | `/v1/baseball/picks/daily` | Today's MLB hit predictions |
+| `GET` | `/v1/baseball/picks/{date}` | Historical MLB predictions |
+| `GET` | `/v1/baseball/confidence/{player_id}` | Single player score |
+| `GET` | `/v1/golf/picks/tournament` | Current tournament picks |
+| `GET` | `/v1/golf/picks/{date}` | Historical golf predictions |
+| `GET` | `/v1/basketball/picks/daily` | Today's NBA predictions |
+| `GET` | `/v1/basketball/picks/{date}` | Historical NBA predictions |
 | `GET` | `/v1/health` | API status |
 | `GET` | `/v1/meta` | Model version info |
 
-Customer endpoints return predictions only. Training endpoints, model weights, AABBH formula, and all internal analytics remain inaccessible.
+Auth via JWT (Stripe-integrated). Customer endpoints return predictions only.
+Training endpoints, model weights, AABBH formula, and internal analytics remain inaccessible.
 
 Full customer documentation: `API_DOCUMENTATION.md`
 
@@ -431,9 +574,10 @@ Full customer documentation: `API_DOCUMENTATION.md`
 
 | Schedule | Lambda | Purpose |
 |----------|--------|---------|
-| Morning (11:30 AM ET, Mar–Oct) | `prediction_trigger` | Day game lineups |
-| Evening (5:00 PM ET, Mar–Oct) | `prediction_trigger` | Night game lineups |
-| Annual (Feb 15, 10:00 AM ET) | `model_retrainer` | Pre-season retrain |
+| 10:00 AM ET daily (Mar–Oct) | `actuals_checker` | Fill previous day hit/miss results |
+| 11:30 AM ET daily (Mar–Oct) | `prediction_trigger` | Day game lineups |
+| 5:00 PM ET daily (Mar–Oct) | `prediction_trigger` | Night game lineups |
+| Feb 15, 10:00 AM ET (annual) | `model_retrainer` | Pre-season retrain |
 
 ### SNS Alerts
 
@@ -457,7 +601,7 @@ When `AlertEmail` is configured:
 | v1.1.0 | 2026-02-14 | Lineup pre-check, doubleheader handling, AABBH fallback | **76.7%** (69/90), 13-game streak |
 | v1.2.0 | 2026-02-15 | ERA tier features (26 features), calibration fix, EventBridge + Lambda | **78.9%** (71/90), **21-game streak** |
 | v1.3.0 | 2026-02-16 | Cross-era validation (78.1%, 179 dates), verbose logging fix, auto-retrain Lambda + SNS alerts, API Gateway + ALB + usage plans, customer endpoints, single-stack feature gates | **78.1%** cross-era (139/178), **21-game streak** |
-| v2.0.0 | 2026-03-22 | Production deployment — live API feed, EventBridge daily scheduling, S3→QuickSight pipeline, summary.json + daily_log.json for README auto-update, deploy-prod.yml CI/CD workflow, CloudFormation error handling, Top 1/2/5/10 hit rate tracking | **Live as of Opening Day March 25, 2026** |
+| v2.0.0 | 2026-03-22 | Production deployment — live API feed, EventBridge daily scheduling, actuals checker Lambda, S3→QuickSight pipeline, README auto-update, API Gateway v2 (HTTP API) with multi-sport routes, Top 1/2/5/10 hit rate tracking | **Live as of Opening Day March 25, 2026** |
 
 ---
 

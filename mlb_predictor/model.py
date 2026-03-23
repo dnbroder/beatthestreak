@@ -3,12 +3,22 @@ model.py – XGBoost model for predicting whether a batter gets at least 1 hit.
 
 Training uses recency-weighted samples (2000-2024).
 Output is a probability (confidence %) for each batter.
+
+v2.1 Changes:
+  - S3 checkpoint saves at each major training step (model never lost on container recycle)
+  - Training status flag written to S3 (training_status.json)
+  - Memory usage logged at key points
+  - Calibration OOM protection — falls back to uncalibrated model gracefully
+  - Verbose logging throughout
 """
 
 import os
+import io
+import json
 import logging
 import pickle
 import time
+import traceback
 from typing import Tuple, Optional
 
 import numpy as np
@@ -38,10 +48,73 @@ MODEL_DIR = "/tmp/models"
 MODEL_PATH = os.path.join(MODEL_DIR, "hit_predictor.pkl")
 CALIBRATED_MODEL_PATH = os.path.join(MODEL_DIR, "hit_predictor_calibrated.pkl")
 
+ENVIRONMENT = os.environ.get("ENVIRONMENT", "production")
+S3_BUCKET = f"mlb-hit-predictor-{ENVIRONMENT}-bucket"
+
 
 def log(msg):
     """Print with flush for immediate container log visibility."""
     print(f"[MODEL] {msg}", flush=True)
+
+
+def _get_memory_mb() -> float:
+    """Get current process memory usage in MB."""
+    try:
+        import resource
+        usage = resource.getrusage(resource.RUSAGE_SELF)
+        return usage.ru_maxrss / 1024  # Linux returns KB
+    except Exception:
+        try:
+            with open("/proc/self/status") as f:
+                for line in f:
+                    if "VmRSS" in line:
+                        return int(line.split()[1]) / 1024
+        except Exception:
+            return 0.0
+    return 0.0
+
+
+def _log_memory(label: str):
+    """Log current memory usage."""
+    mb = _get_memory_mb()
+    log(f"Memory [{label}]: {mb:.0f} MB")
+
+
+def _write_status(s3_client, status: str, detail: str = ""):
+    """Write training status to S3 so it's visible even if container dies."""
+    try:
+        payload = {
+            "status": status,
+            "detail": detail,
+            "timestamp": time.strftime("%Y-%m-%d %Human:%M:%S UTC", time.gmtime()),
+            "environment": ENVIRONMENT,
+        }
+        s3_client.put_object(
+            Bucket=S3_BUCKET,
+            Key="models/training_status.json",
+            Body=json.dumps(payload, indent=2),
+            ContentType="application/json",
+        )
+    except Exception as e:
+        log(f"WARNING: Could not write training status to S3: {e}")
+
+
+def _save_model_to_s3(s3_client, local_path: str, s3_key: str):
+    """Upload a model file to S3."""
+    try:
+        with open(local_path, "rb") as f:
+            s3_client.put_object(
+                Bucket=S3_BUCKET,
+                Key=s3_key,
+                Body=f.read(),
+                ContentType="application/octet-stream",
+            )
+        size_kb = os.path.getsize(local_path) / 1024
+        log(f"S3 upload: s3://{S3_BUCKET}/{s3_key} ({size_kb:.1f} KB)")
+        return True
+    except Exception as e:
+        log(f"ERROR: S3 upload failed for {s3_key}: {e}")
+        return False
 
 
 # ---------------------------------------------------------------------------
@@ -65,13 +138,18 @@ def train_model(
     Returns:
         (model, metrics_dict)
     """
+    import boto3
+    s3 = boto3.client("s3")
+
     log("=" * 60)
     log("MODEL TRAINING START")
     log("=" * 60)
+    _log_memory("start")
     train_start = time.time()
 
+    _write_status(s3, "started", "Feature selection and data preparation")
+
     if feature_cols is None:
-        # Use whichever columns actually exist in the data
         available = [c for c in FEATURE_COLUMNS if c in df.columns]
         if len(available) < 5:
             available = [c for c in BASIC_FEATURE_COLUMNS if c in df.columns]
@@ -85,8 +163,8 @@ def train_model(
     log("")
     log("--- Data Preparation ---")
     log(f"Raw input: {len(df):,} rows, {len(df.columns)} columns")
+    _log_memory("before clean")
 
-    # Drop rows with NaN in features or target
     required_cols = feature_cols + [TARGET_COLUMN]
     if WEIGHT_COLUMN in df.columns:
         required_cols.append(WEIGHT_COLUMN)
@@ -95,7 +173,6 @@ def train_model(
     dropped_nan = len(df) - len(clean)
     log(f"Dropped {dropped_nan:,} rows with NaN values ({dropped_nan/len(df)*100:.1f}%)")
 
-    # Drop very early season games (< 7 games played) — not enough history
     if "game_num_in_season" in clean.columns:
         before = len(clean)
         clean = clean[clean["game_num_in_season"] >= 7]
@@ -103,12 +180,13 @@ def train_model(
         log(f"Dropped {dropped_early:,} early-season rows (< 7 games)")
 
     log(f"Clean training data: {len(clean):,} rows")
+    _log_memory("after clean")
 
     if len(clean) < 100:
         log("ERROR: Not enough clean data to train. Need at least 100 rows.")
+        _write_status(s3, "failed", "Insufficient data")
         return None, {"error": "Insufficient data"}
 
-    # Dataset stats
     if "season" in clean.columns:
         season_counts = clean["season"].value_counts().sort_index()
         log(f"Seasons in dataset:")
@@ -131,6 +209,7 @@ def train_model(
     # ----- Train/test split -----
     log("")
     log("--- Train/Test Split ---")
+    _write_status(s3, "in_progress", "Train/test split")
 
     if "date" in clean.columns:
         clean_sorted = clean.sort_values("date")
@@ -165,10 +244,12 @@ def train_model(
 
     log(f"  Train: {len(X_train):,} rows (hit rate: {y_train.mean():.1%})")
     log(f"  Test:  {len(X_test):,} rows (hit rate: {y_test.mean():.1%})")
+    _log_memory("after split")
 
     # ----- XGBoost model -----
     log("")
     log("--- XGBoost Training ---")
+    _write_status(s3, "in_progress", f"XGBoost training ({len(X_train):,} rows)")
 
     hit_rate = y_train.mean()
     scale_pos_weight = (1 - hit_rate) / hit_rate if hit_rate > 0 else 1.0
@@ -194,7 +275,7 @@ def train_model(
     log(f"  subsample:         0.8")
     log(f"  colsample_bytree:  0.8")
     log(f"  min_child_weight:  5")
-    log(f"Training XGBoost...")
+    log(f"Training XGBoost on {len(X_train):,} rows...")
 
     fit_start = time.time()
     model.fit(
@@ -210,32 +291,66 @@ def train_model(
     log(f"XGBoost training complete in {fit_time:.1f}s")
     log(f"  Best iteration: {best_iteration}")
     log(f"  Best eval score: {best_score}")
+    _log_memory("after XGBoost fit")
+
+    # ----- Save uncalibrated checkpoint to S3 immediately -----
+    # This ensures we always have a usable model even if calibration OOMs
+    log("")
+    log("--- Saving Uncalibrated Checkpoint ---")
+    os.makedirs(MODEL_DIR, exist_ok=True)
+    checkpoint_path = os.path.join(MODEL_DIR, "hit_predictor_checkpoint.pkl")
+    with open(checkpoint_path, "wb") as f:
+        pickle.dump(model, f)
+    with open(os.path.join(MODEL_DIR, "feature_cols.pkl"), "wb") as f:
+        pickle.dump(feature_cols, f)
+
+    _save_model_to_s3(s3, checkpoint_path, "models/hit_predictor_checkpoint.pkl")
+    _save_model_to_s3(s3, os.path.join(MODEL_DIR, "feature_cols.pkl"), "models/feature_cols.pkl")
+    _write_status(s3, "in_progress", "Uncalibrated checkpoint saved — starting calibration")
+    log(f"Checkpoint saved to S3 — model is safe even if calibration fails")
 
     # ----- Calibration (makes probabilities more accurate) -----
     final_model = model
+    calibrated = False
     if calibrate and len(X_test) > 50:
         log("")
         log("--- Probability Calibration ---")
+        _log_memory("before calibration")
         log("Calibrating with Platt scaling (sigmoid, 5-fold CV)...")
+        log(f"Note: calibration refits model 5x — peak memory usage is here")
         cal_start = time.time()
         try:
-            # Clone model without early_stopping_rounds for calibration
             cal_params = model.get_params()
             cal_params.pop('early_stopping_rounds', None)
             cal_base = xgb.XGBClassifier(**cal_params)
             log(f"Refitting base model without early stopping for calibration...")
             cal_base.fit(X_train, y_train, sample_weight=w_train, verbose=False)
+            _log_memory("after cal_base fit")
+            log(f"Running 5-fold CV calibration...")
             cal_model = CalibratedClassifierCV(cal_base, cv=5, method="sigmoid")
             cal_model.fit(X_train, y_train, sample_weight=w_train)
             final_model = cal_model
+            calibrated = True
             cal_time = time.time() - cal_start
             log(f"Calibration complete in {cal_time:.1f}s")
+            _log_memory("after calibration")
+        except MemoryError as e:
+            log(f"WARNING: Calibration OOM — using uncalibrated model")
+            log(f"  Error: {e}")
+            log(f"  The uncalibrated checkpoint is already saved to S3")
+            final_model = model
+            calibrated = False
         except Exception as e:
-            log(f"WARNING: Calibration failed, using uncalibrated model: {e}")
+            log(f"WARNING: Calibration failed — using uncalibrated model")
+            log(f"  Error: {e}")
+            log(f"  Traceback: {traceback.format_exc()}")
+            final_model = model
+            calibrated = False
 
     # ----- Evaluate -----
     log("")
     log("--- Model Evaluation ---")
+    _write_status(s3, "in_progress", "Evaluating model")
 
     y_pred = final_model.predict(X_test)
     y_prob = final_model.predict_proba(X_test)[:, 1]
@@ -249,16 +364,17 @@ def train_model(
         "test_size": len(X_test),
         "train_size": len(X_train),
         "hit_rate_test": round(y_test.mean(), 4),
+        "calibrated": calibrated,
         "features_used": feature_cols,
     }
 
-    log(f"  Accuracy:  {metrics['accuracy']:.4f}")
-    log(f"  AUC-ROC:   {metrics['auc_roc']:.4f}")
-    log(f"  Precision: {metrics['precision']:.4f}")
-    log(f"  Recall:    {metrics['recall']:.4f}")
-    log(f"  Log Loss:  {metrics['log_loss']:.4f}")
+    log(f"  Accuracy:   {metrics['accuracy']:.4f}")
+    log(f"  AUC-ROC:    {metrics['auc_roc']:.4f}")
+    log(f"  Precision:  {metrics['precision']:.4f}")
+    log(f"  Recall:     {metrics['recall']:.4f}")
+    log(f"  Log Loss:   {metrics['log_loss']:.4f}")
+    log(f"  Calibrated: {'Yes' if calibrated else 'No (OOM or error — using uncalibrated)'}")
 
-    # Probability distribution
     log(f"  Probability distribution (test set):")
     log(f"    Mean:   {y_prob.mean():.3f}")
     log(f"    Median: {np.median(y_prob):.3f}")
@@ -266,35 +382,58 @@ def train_model(
     log(f"    Max:    {y_prob.max():.3f}")
     log(f"    Std:    {y_prob.std():.3f}")
 
+    # Confidence tiers
+    log(f"  Confidence tiers:")
+    for threshold in [0.60, 0.65, 0.70, 0.75, 0.80]:
+        count = (y_prob >= threshold).sum()
+        log(f"    >= {threshold:.0%}: {count} batters")
+
     # ----- Feature importance -----
     if hasattr(model, "feature_importances_"):
         importance = dict(zip(feature_cols, [float(x) for x in model.feature_importances_]))
         sorted_imp = dict(sorted(importance.items(), key=lambda x: x[1], reverse=True))
         metrics["feature_importance"] = sorted_imp
         log("")
-        log("--- Feature Importance (all features) ---")
+        log("--- Feature Importance ---")
         for i, (feat, imp) in enumerate(sorted_imp.items()):
             bar = "█" * int(imp * 100)
             log(f"  {i+1:2d}. {feat:30s} {imp:.4f} {bar}")
 
-    # Ensure all metrics are JSON-serializable (no numpy types)
     for k, v in metrics.items():
         if isinstance(v, (np.floating, np.integer)):
             metrics[k] = float(v)
 
-    # ----- Save model -----
+    # ----- Save final model locally and to S3 -----
     log("")
-    log("--- Saving Model ---")
+    log("--- Saving Final Model ---")
+    _write_status(s3, "in_progress", "Saving final model to S3")
+    _log_memory("before final save")
+
     os.makedirs(MODEL_DIR, exist_ok=True)
     with open(MODEL_PATH, "wb") as f:
         pickle.dump(final_model, f)
     model_size = os.path.getsize(MODEL_PATH)
-    log(f"Model saved to {MODEL_PATH} ({model_size / 1024:.1f} KB)")
+    log(f"Model saved locally to {MODEL_PATH} ({model_size / 1024:.1f} KB)")
 
-    # Save feature column order (needed for prediction)
     with open(os.path.join(MODEL_DIR, "feature_cols.pkl"), "wb") as f:
         pickle.dump(feature_cols, f)
     log(f"Feature columns saved ({len(feature_cols)} features)")
+
+    # Save metrics
+    metrics_path = os.path.join(MODEL_DIR, "metrics.json")
+    with open(metrics_path, "w") as f:
+        json.dump(metrics, f, indent=2, default=str)
+
+    # Upload final model + metadata to S3
+    log("Uploading final model to S3...")
+    model_saved = _save_model_to_s3(s3, MODEL_PATH, "models/hit_predictor.pkl")
+    _save_model_to_s3(s3, os.path.join(MODEL_DIR, "feature_cols.pkl"), "models/feature_cols.pkl")
+    _save_model_to_s3(s3, metrics_path, "models/metrics.json")
+
+    if model_saved:
+        log(f"Final model saved to s3://{S3_BUCKET}/models/hit_predictor.pkl")
+    else:
+        log(f"WARNING: S3 upload failed — model only saved locally at {MODEL_PATH}")
 
     total_time = time.time() - train_start
     log("")
@@ -306,8 +445,14 @@ def train_model(
     log(f"  Test rows:  {len(X_test):,}")
     log(f"  Accuracy:   {metrics['accuracy']:.4f}")
     log(f"  AUC-ROC:    {metrics['auc_roc']:.4f}")
-    log(f"  Calibrated: {'Yes' if final_model != model else 'No'}")
+    log(f"  Calibrated: {'Yes' if calibrated else 'No'}")
+    log(f"  S3:         {'✓ saved' if model_saved else '✗ FAILED'}")
     log("=" * 60)
+    _log_memory("complete")
+
+    _write_status(s3, "complete",
+        f"accuracy={metrics['accuracy']:.4f} auc={metrics['auc_roc']:.4f} "
+        f"calibrated={calibrated} time={total_time:.0f}s")
 
     return final_model, metrics
 
@@ -316,15 +461,47 @@ def train_model(
 # Prediction
 # ---------------------------------------------------------------------------
 def load_model() -> Tuple[Optional[object], Optional[list]]:
-    """Load saved model and feature column order."""
+    """
+    Load saved model and feature column order.
+    Tries local /tmp first, then falls back to S3.
+    """
+    # Try local first
     try:
         with open(MODEL_PATH, "rb") as f:
             model = pickle.load(f)
         with open(os.path.join(MODEL_DIR, "feature_cols.pkl"), "rb") as f:
             feature_cols = pickle.load(f)
+        logger.info(f"Model loaded from local: {MODEL_PATH}")
         return model, feature_cols
     except FileNotFoundError:
-        logger.warning("No saved model found.")
+        pass
+
+    # Fall back to S3
+    logger.info("Local model not found — loading from S3...")
+    try:
+        import boto3
+        s3 = boto3.client("s3")
+
+        os.makedirs(MODEL_DIR, exist_ok=True)
+
+        # Download model
+        s3.download_file(S3_BUCKET, "models/hit_predictor.pkl", MODEL_PATH)
+        logger.info(f"Downloaded model from s3://{S3_BUCKET}/models/hit_predictor.pkl")
+
+        # Download feature cols
+        feature_cols_path = os.path.join(MODEL_DIR, "feature_cols.pkl")
+        s3.download_file(S3_BUCKET, "models/feature_cols.pkl", feature_cols_path)
+
+        with open(MODEL_PATH, "rb") as f:
+            model = pickle.load(f)
+        with open(feature_cols_path, "rb") as f:
+            feature_cols = pickle.load(f)
+
+        logger.info(f"Model loaded from S3 ({len(feature_cols)} features)")
+        return model, feature_cols
+
+    except Exception as e:
+        logger.error(f"Failed to load model from S3: {e}")
         return None, None
 
 
@@ -335,15 +512,6 @@ def predict_daily(
 ) -> pd.DataFrame:
     """
     Generate hit predictions for today's batters.
-
-    Args:
-        df: Today's batter data with engineered features
-        model: Trained model (loads from disk if None)
-        feature_cols: Feature columns used during training
-
-    Returns:
-        DataFrame sorted by confidence (highest first) with columns:
-          player_name, team, opponent, confidence_pct, rank, features...
     """
     if model is None or feature_cols is None:
         model, feature_cols = load_model()
@@ -351,25 +519,20 @@ def predict_daily(
             logger.error("No model available for prediction")
             return pd.DataFrame()
 
-    # Ensure all feature columns exist
     missing = [c for c in feature_cols if c not in df.columns]
     if missing:
         logger.warning(f"Missing features (filling with median): {missing}")
         for col in missing:
             df[col] = df[col].median() if col in df.columns else 0
 
-    # Drop rows where we can't compute features
     clean = df.dropna(subset=[c for c in feature_cols if c in df.columns])
     if clean.empty:
         logger.warning("No valid rows for prediction")
         return pd.DataFrame()
 
     X = clean[feature_cols]
-
-    # Predict probability of getting a hit
     probabilities = model.predict_proba(X)[:, 1]
 
-    # Build output
     output = clean[["player_id", "player_name", "team", "opponent", "date"]].copy()
     if "game_pk" in clean.columns:
         output["game_pk"] = clean["game_pk"]
@@ -398,14 +561,6 @@ def simulate_streak(
 ) -> dict:
     """
     Simulate playing Beat the Streak using model predictions.
-
-    Args:
-        predictions_by_date: {date: DataFrame of ranked predictions}
-        actuals: DataFrame with player_id, date, got_hit columns
-        pick_count: How many players to pick per day (1 or 2)
-
-    Returns:
-        Dict with longest_streak, total_correct, total_games, daily_log
     """
     logger.info(f"Simulating streak with top-{pick_count} picks...")
 
@@ -420,7 +575,6 @@ def simulate_streak(
         if preds.empty:
             continue
 
-        # Pick top N players
         picks = preds.head(pick_count)
         day_success = True
 

@@ -24,17 +24,18 @@ jobs:
         run: git config --global init.defaultBranch main
 
       - name: Checkout repo
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v5
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4.1.0
+        uses: aws-actions/configure-aws-credentials@v5
         with:
           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/mlb-cicd-role
           aws-region: ${{ env.AWS_REGION }}
+          role-session-name: github-actions-deploy
 
       - name: Login to Amazon ECR
         id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2.0.1
+        uses: aws-actions/amazon-ecr-login@v2
 
       - name: Build and push Docker image
         env:
@@ -81,7 +82,16 @@ jobs:
           cd mlb_predictor/lambda
           zip prediction_trigger.zip prediction_trigger.py
           zip model_retrainer.zip model_retrainer.py
-          zip check_actuals.zip check_actuals.py
+          # check_actuals.zip now includes predictions_log.py for v1.5 analytics enrichment.
+          # The file lives one level up in the mlb_predictor package, so we zip it from there
+          # into a subdirectory to preserve the `from mlb_predictor.predictions_log import ...`
+          # import path that check_actuals.py uses.
+          mkdir -p _build/mlb_predictor
+          cp check_actuals.py _build/
+          cp ../predictions_log.py _build/mlb_predictor/
+          touch _build/mlb_predictor/__init__.py
+          (cd _build && zip -r ../check_actuals.zip .)
+          rm -rf _build
           aws s3 cp prediction_trigger.zip s3://mlb-hit-predictor-$ENVIRONMENT-bucket/lambda/
           aws s3 cp model_retrainer.zip s3://mlb-hit-predictor-$ENVIRONMENT-bucket/lambda/
           aws s3 cp check_actuals.zip s3://mlb-hit-predictor-$ENVIRONMENT-bucket/lambda/

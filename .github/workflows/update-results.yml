@@ -3,22 +3,42 @@ name: Update Live Results
 on:
   schedule:
     - cron: '0 17 * * *'  # 1 PM ET daily (after morning predictions)
-  workflow_dispatch:       # manual trigger anytime
+  workflow_dispatch:      # manual trigger anytime
+
+# ---------------------------------------------------------------------------
+# OIDC-based AWS auth requires id-token: write at the job (or workflow) level.
+# Without this, GitHub refuses to mint the JWT that configure-aws-credentials
+# needs to exchange for temporary AWS credentials, and the action fails with
+# "Could not load credentials from any providers."
+# contents: write is needed for the README commit + push at the end.
+# ---------------------------------------------------------------------------
+permissions:
+  id-token: write
+  contents: write
+
+# Prevent two scheduled runs from racing each other on the same README file.
+concurrency:
+  group: update-live-results
+  cancel-in-progress: false
 
 jobs:
   update:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v5
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v5
         with:
           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/mlb-cicd-role
           aws-region: ${{ secrets.AWS_REGION }}
+          role-session-name: github-actions-update-results
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
 
       - name: Install dependencies
         run: pip install boto3
@@ -31,5 +51,9 @@ jobs:
           git config user.name "BeatTheStreak Bot"
           git config user.email "bot@beatthestreak.com"
           git add README.md
-          git diff --staged --quiet || git commit -m "chore: update live season results [skip ci]"
-          git push
+          if git diff --staged --quiet; then
+            echo "No README changes to commit."
+          else
+            git commit -m "chore: update live season results [skip ci]"
+            git push
+          fi

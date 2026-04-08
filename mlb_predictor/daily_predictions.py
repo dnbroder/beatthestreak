@@ -20,6 +20,12 @@ v1.2 Changes:
 
 v1.4 Changes:
   - summary.json + daily_log.json written to S3 for README auto-update
+
+v1.5 Changes:
+  - Analytics-grade prediction log written to predictions_log/dt=YYYY-MM-DD/
+    in parquet for QuickSight / Athena (one row per prediction, with top-N
+    flags and a stable schema across model versions). Purely additive — does
+    not change daily_log.json or summary.json.
 """
 
 import os
@@ -47,6 +53,10 @@ from mlb_predictor.feature_engineering import (
     FEATURE_COLUMNS,
 )
 from mlb_predictor.model import load_model
+from mlb_predictor.predictions_log import append_predictions
+
+# Bumped on every model behavior change so QuickSight can compare versions.
+MODEL_VERSION = "v1.5"
 
 logger = logging.getLogger("beatthestreak")
 
@@ -749,6 +759,15 @@ def write_predictions_to_s3(df: pd.DataFrame, date_str: str):
             ContentType="text/csv",
         )
         log("Latest predictions updated (predictions/latest/)")
+
+        # --- v1.5: Analytics-grade prediction log for QuickSight / Athena ---
+        # Writes predictions_log/dt=YYYY-MM-DD/predictions.parquet with one row
+        # per prediction. Failure here is logged but does NOT abort the
+        # production pipeline — the legacy CSV + JSON outputs above still ship.
+        try:
+            append_predictions(date_str, df, model_version=MODEL_VERSION)
+        except Exception as e:
+            log(f"WARNING: predictions_log.append_predictions failed: {e}")
 
         # --- summary.json + daily_log.json for README auto-update ---
         # Load or initialize running summary

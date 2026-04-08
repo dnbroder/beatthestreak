@@ -52,6 +52,15 @@ Parameters:
     Type: String
     Default: ""
     Description: ACM certificate ARN for custom domain. Required if DomainName is set.
+  PandasLayerSsmPath:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /aws/service/aws-sdk-pandas/3.15.1/py3.12/x86_64/layer-arn
+    Description: >-
+      SSM public parameter path that resolves to the AWS SDK for pandas Lambda
+      layer ARN. This layer bundles pandas + pyarrow + numpy for the Lambda
+      runtime. Used by the ActualsCheckerFunction to enrich predictions_log
+      parquet files with actual hit results. Bump the version segment when
+      AWS publishes a new release (check https://github.com/aws/aws-sdk-pandas/releases).
 
 Conditions:
   IsProduction: !Equals [!Ref Environment, production]
@@ -395,11 +404,16 @@ Resources:
       Runtime: python3.12
       Handler: check_actuals.handler
       Timeout: 900
-      MemorySize: 256
+      MemorySize: 512
       Role: !GetAtt ActualsCheckerRole.Arn
       Environment:
         Variables:
           ENVIRONMENT: !Ref Environment
+      Layers:
+        # AWS-managed layer providing pandas + pyarrow + numpy for Lambda.
+        # Resolved at deploy time from SSM (see PandasLayerSsmPath parameter).
+        # Used by predictions_log.append_actuals to write parquet enrichment.
+        - !Ref PandasLayerSsmPath
       Code:
         S3Bucket: !Sub mlb-hit-predictor-${Environment}-bucket
         S3Key: lambda/check_actuals.zip
@@ -431,7 +445,9 @@ Resources:
                 Action:
                   - s3:GetObject
                   - s3:PutObject
-                Resource: !Sub "arn:aws:s3:::mlb-hit-predictor-${Environment}-bucket/predictions/*"
+                Resource:
+                  - !Sub "arn:aws:s3:::mlb-hit-predictor-${Environment}-bucket/predictions/*"
+                  - !Sub "arn:aws:s3:::mlb-hit-predictor-${Environment}-bucket/predictions_log/*"
 
   ActualsCheckerLogGroup:
     Type: AWS::Logs::LogGroup
@@ -823,6 +839,116 @@ Resources:
       ApiId: !Ref BeatTheStreakAPI
       Stage: !Ref Environment
 
+  # ===========================================================================
+  # ANALYTICS — Glue catalog + Athena workgroup for QuickSight (v1.5)
+  # ===========================================================================
+  # Predictions log layout:
+  #   s3://mlb-hit-predictor-${Environment}-bucket/predictions_log/
+  #     dt=YYYY-MM-DD/predictions.parquet
+  #
+  # QuickSight connects to Athena, Athena queries the Glue table, the Glue
+  # table is a thin metadata layer over the parquet partitions. No data
+  # movement, no ETL job, no extra storage cost beyond the parquet itself.
+  #
+  # Athena partition projection eliminates the need for MSCK REPAIR or a
+  # Glue crawler — new dt= partitions are inferred from the date range
+  # the moment they land in S3.
+
+  AnalyticsGlueDatabase:
+    Type: AWS::Glue::Database
+    Properties:
+      CatalogId: !Ref AWS::AccountId
+      DatabaseInput:
+        Name: !Sub beatthestreak_analytics_${Environment}
+        Description: BeatTheStreak prediction log + future DK optimizer tables
+
+  PredictionsLogGlueTable:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId: !Ref AWS::AccountId
+      DatabaseName: !Ref AnalyticsGlueDatabase
+      TableInput:
+        Name: predictions_log
+        Description: One row per BeatTheStreak prediction, enriched with actuals
+        TableType: EXTERNAL_TABLE
+        Parameters:
+          classification: parquet
+          "parquet.compression": SNAPPY
+          "projection.enabled": "true"
+          "projection.dt.type": "date"
+          "projection.dt.format": "yyyy-MM-dd"
+          "projection.dt.range": "2026-03-25,NOW"
+          "projection.dt.interval": "1"
+          "projection.dt.interval.unit": "DAYS"
+          "storage.location.template": !Sub "s3://mlb-hit-predictor-${Environment}-bucket/predictions_log/dt=${!dt}"
+        PartitionKeys:
+          - Name: dt
+            Type: date
+        StorageDescriptor:
+          Location: !Sub s3://mlb-hit-predictor-${Environment}-bucket/predictions_log/
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe
+          Columns:
+            # ----- identity -----
+            - { Name: game_date,            Type: string }
+            - { Name: player_id,            Type: bigint }
+            - { Name: player_name,          Type: string }
+            - { Name: team,                 Type: string }
+            - { Name: opponent,             Type: string }
+            - { Name: venue,                Type: string }
+            - { Name: is_home,              Type: boolean }
+            # ----- lineup / matchup -----
+            - { Name: lineup_position,      Type: int }
+            - { Name: bat_side,             Type: string }
+            - { Name: opp_pitcher,          Type: string }
+            - { Name: opp_pitcher_hand,     Type: string }
+            - { Name: is_doubleheader,      Type: boolean }
+            - { Name: game_number,          Type: int }
+            - { Name: is_confirmed_starter, Type: boolean }
+            # ----- model output -----
+            - { Name: rank,                 Type: int }
+            - { Name: predicted_prob,       Type: double }
+            - { Name: confidence_pct,       Type: double }
+            - { Name: model_version,        Type: string }
+            # ----- precomputed top-N flags -----
+            - { Name: is_top_1,             Type: boolean }
+            - { Name: is_top_2,             Type: boolean }
+            - { Name: is_top_5,             Type: boolean }
+            - { Name: is_top_10,            Type: boolean }
+            - { Name: is_top_25,            Type: boolean }
+            - { Name: is_top_50,            Type: boolean }
+            # ----- key features -----
+            - { Name: batting_avg_season,   Type: double }
+            - { Name: avg_last_30,          Type: double }
+            - { Name: aabbh,                Type: double }
+            - { Name: aabbh_ratio,          Type: double }
+            - { Name: in_optimal_zone,      Type: boolean }
+            - { Name: platoon_advantage,    Type: boolean }
+            - { Name: pitcher_era,          Type: double }
+            - { Name: pitcher_whip,         Type: double }
+            - { Name: park_factor,          Type: double }
+            # ----- actuals (filled by check_actuals after games complete) -----
+            - { Name: actual_hit,           Type: boolean }
+            - { Name: actual_ab_count,      Type: int }
+            - { Name: actual_hit_count,     Type: int }
+            - { Name: actuals_resolved_at,  Type: string }
+
+  AnalyticsAthenaWorkgroup:
+    Type: AWS::Athena::WorkGroup
+    Properties:
+      Name: !Sub beatthestreak-analytics-${Environment}
+      Description: Workgroup for QuickSight + ad-hoc Athena queries against predictions_log
+      State: ENABLED
+      WorkGroupConfiguration:
+        EnforceWorkGroupConfiguration: true
+        PublishCloudWatchMetricsEnabled: true
+        ResultConfiguration:
+          OutputLocation: !Sub s3://mlb-hit-predictor-${Environment}-bucket/athena_results/
+        EngineVersion:
+          SelectedEngineVersion: AUTO
+
 # ===========================================================================
 # OUTPUTS
 # ===========================================================================
@@ -884,3 +1010,13 @@ Outputs:
     Condition: HasAlertEmail
     Value: !Ref AlertTopic
     Description: SNS topic for pipeline alerts
+
+  AnalyticsGlueDatabase:
+    Value: !Ref AnalyticsGlueDatabase
+    Description: Glue database for QuickSight / Athena (v1.5)
+  PredictionsLogTable:
+    Value: !Sub ${AnalyticsGlueDatabase}.predictions_log
+    Description: Fully-qualified Athena table for the analytics-grade prediction log
+  AnalyticsAthenaWorkgroup:
+    Value: !Ref AnalyticsAthenaWorkgroup
+    Description: Athena workgroup to point QuickSight at

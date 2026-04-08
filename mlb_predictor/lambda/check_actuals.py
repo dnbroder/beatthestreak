@@ -6,6 +6,11 @@ Reads yesterday's top picks from daily_log.json, checks actual game results
 from the MLB Stats API, updates top1/top2/top5/top10_hit fields, and
 recalculates running summary stats.
 
+v1.5: Also enriches the analytics-grade prediction log
+(predictions_log/dt=YYYY-MM-DD/predictions.parquet) with actual_hit columns
+for QuickSight / Athena dashboards. Purely additive — daily_log.json + summary.json
+behavior is unchanged.
+
 Schedule: Run at 10:00 AM ET daily (before the 11:30 AM prediction trigger)
 EventBridge cron: cron(0 14 * 3-10 ? *)
 
@@ -247,6 +252,21 @@ def run_actuals_check(date_str: str = None):
         Body=json.dumps(entry, indent=2),
         ContentType="application/json",
     )
+
+    # --- v1.5: Enrich the analytics-grade prediction log with actuals ---
+    # This rewrites predictions_log/dt=YYYY-MM-DD/predictions.parquet with the
+    # actual_hit / actual_ab_count / actual_hit_count columns populated for the
+    # top 100 ranked predictions of the day. Failure here is logged but does
+    # NOT block the legacy daily_log.json + summary.json updates above.
+    try:
+        # Lazy import so the Lambda cold-start path stays light if the package
+        # isn't bundled (during partial deploys). The module is part of the
+        # mlb_predictor package and ships in the main image; the Lambda zip
+        # for check_actuals also includes it as of v1.5.
+        from mlb_predictor.predictions_log import append_actuals
+        append_actuals(date_str)
+    except Exception as e:
+        log(f"WARNING: predictions_log.append_actuals failed: {e}")
 
     log(f"S3 updated — actuals check complete for {date_str}")
 

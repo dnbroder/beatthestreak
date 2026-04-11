@@ -56,7 +56,7 @@ from mlb_predictor.model import load_model
 from mlb_predictor.predictions_log import append_predictions
 
 # Bumped on every model behavior change so QuickSight can compare versions.
-MODEL_VERSION = "v1.5"
+MODEL_VERSION = "v1.5.1"
 
 logger = logging.getLogger("beatthestreak")
 
@@ -640,6 +640,22 @@ def run_daily_predictions(
 
     # Rank and sort
     pred_df = pred_df.sort_values("confidence_pct", ascending=False).reset_index(drop=True)
+
+    # v1.5.1 fix: output-side player dedup. The in-loop doubleheader dedup at
+    # the top of the scoring pass relies on game["is_doubleheader"] being True,
+    # which depends on the MLB Stats API correctly reporting team_game_count > 1
+    # for the day. On 2026-04-02 that detection failed for TOR and MIA, so the
+    # same player was scored twice (once per game) and showed up twice in the
+    # top-N output. This pass collapses any duplicate player_ids regardless of
+    # upstream detection, keeping the higher-confidence row (safe because we
+    # already sorted descending by confidence_pct above). Safe no-op on normal
+    # days when no duplicates exist.
+    before = len(pred_df)
+    pred_df = pred_df.drop_duplicates(subset=["player_id"], keep="first").reset_index(drop=True)
+    after = len(pred_df)
+    if before != after:
+        log(f"  Output-side dedup: collapsed {before - after} duplicate player rows")
+
     pred_df["rank"] = range(1, len(pred_df) + 1)
 
     # Confidence stats

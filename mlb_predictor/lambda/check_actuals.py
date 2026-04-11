@@ -22,6 +22,7 @@ import os
 import json
 import logging
 import argparse
+import unicodedata
 from datetime import datetime, timedelta
 
 import boto3
@@ -39,6 +40,19 @@ def log(msg):
     print(f"[ACTUALS] {msg}", flush=True)
 
 
+def _ascii_name(name: str) -> str:
+    """
+    v1.5.1: Strip diacritics for MLB Stats API name search.
+    The /people/search endpoint's fuzzy matcher chokes on URL-encoded diacritics
+    — 'Jesús Sánchez' returns empty, 'Jesus Sanchez' matches correctly.
+    This observed on 2026-04-02 where every accented name (Sánchez, Giménez)
+    resolved to None and left top1/top2/top5_hit as null for the day.
+    """
+    if not isinstance(name, str):
+        return name
+    return unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode("ascii")
+
+
 # ---------------------------------------------------------------------------
 # Fetch actual game results from MLB Stats API
 # ---------------------------------------------------------------------------
@@ -48,10 +62,12 @@ def get_player_hit_result(player_name: str, date_str: str) -> bool | None:
     Returns True (hit), False (no hit), or None (game not found / postponed).
     """
     try:
+        # v1.5.1: strip diacritics before API call — see _ascii_name docstring
+        search_name = _ascii_name(player_name)
         # Search for player by name
         resp = requests.get(
             f"{BASE_URL}/people/search",
-            params={"names": player_name, "sportId": 1},
+            params={"names": search_name, "sportId": 1},
             timeout=10,
         )
         if not resp.ok:
@@ -187,7 +203,16 @@ def run_actuals_check(date_str: str = None):
         return
 
     if entry.get("top1_hit") is not None:
-        log(f"Actuals already filled for {date_str} — skipping")
+        log(f"Actuals already filled for {date_str} — skipping legacy update")
+        # v1.5.1: even on re-invocation where the legacy JSON is already
+        # resolved, we still want to ensure the analytics parquet exists
+        # and is enriched. This is the path that runs on scheduled morning
+        # re-invocations and on manual backfills of already-resolved days.
+        try:
+            from mlb_predictor.predictions_log import append_actuals
+            append_actuals(date_str)
+        except Exception as e:
+            log(f"WARNING: predictions_log.append_actuals failed: {e}")
         return
 
     log(f"Checking results for: {entry.get('top_pick')} and top 2/5/10...")

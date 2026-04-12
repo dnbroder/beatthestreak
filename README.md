@@ -638,13 +638,13 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:RUNNING_RECORD_START -->
 | Metric | Value | Updated |
 |--------|-------|---------|
-| **Top-1 Hit Rate** | — | — |
-| **Top-2 Hit Rate** | — | — |
-| **Top-5 Hit Rate** | — | — |
-| **Top-10 Hit Rate** | — | — |
-| **Current Streak (Top-1)** | — | — |
-| **Longest Streak (Top-1)** | — | — |
-| **Dates Predicted** | — | — |
+| **Top-1 Hit Rate** | 64.3% | 2026-04-12 15:23 ET |
+| **Top-2 Hit Rate** | 92.9% | 2026-04-12 15:23 ET |
+| **Top-5 Hit Rate** | 100.0% | 2026-04-12 15:23 ET |
+| **Top-10 Hit Rate** | 100.0% | 2026-04-12 15:23 ET |
+| **Current Streak (Top-1)** | 2 | 2026-04-12 15:23 ET |
+| **Longest Streak (Top-1)** | 3 | 2026-04-12 15:23 ET |
+| **Dates Predicted** | 14 | 2026-04-12 15:23 ET |
 | **Season Start** | March 25, 2026 | — |
 <!-- BTS:RUNNING_RECORD_END -->
 
@@ -653,7 +653,20 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:DAILY_LOG_START -->
 | Date | Top Pick | Team | Confidence | Top-1 | Top-2 | Top-5 | Top-10 | Top-1 Streak |
 |------|----------|------|------------|-------|-------|-------|--------|--------------|
-| *Populates after next bot run* | | | | | | | | |
+| 2026-04-11 | Matt Chapman | San Francisco Giants | 80.8% | ✅ | ✅ | ✅ | ✅ | 2 |
+| 2026-04-10 | Wilyer Abreu | Boston Red Sox | 80.0% | ✅ | ✅ | ✅ | ✅ | 1 |
+| 2026-04-09 | Kevin McGonigle | Detroit Tigers | 75.8% | ❌ | ✅ | ✅ | ✅ | 0 |
+| 2026-04-08 | Troy Johnston | Colorado Rockies | 82.3% | ✅ | ✅ | ✅ | ✅ | 1 |
+| 2026-04-07 | Randy Arozarena | Seattle Mariners | 79.6% | ❌ | ✅ | ✅ | ✅ | 0 |
+| 2026-04-06 | Brice Turang | Milwaukee Brewers | 83.0% | ❌ | ✅ | ✅ | ✅ | 0 |
+| 2026-04-05 | Oneil Cruz | Pittsburgh Pirates | 79.5% | ✅ | ✅ | ✅ | ✅ | 3 |
+| 2026-04-04 | Yandy Díaz | Tampa Bay Rays | 81.4% | ✅ | ✅ | ✅ | ✅ | 2 |
+| 2026-04-03 | Brandon Marsh | Philadelphia Phillies | 79.7% | ✅ | ✅ | ✅ | ✅ | 1 |
+| 2026-04-02 | Byron Buxton | Minnesota Twins | 68.3% | ❌ | ✅ | ✅ | ✅ | 0 |
+| 2026-04-01 | Javier Sanoja | Miami Marlins | 77.1% | ✅ | ✅ | ✅ | ✅ | 3 |
+| 2026-03-31 | Jacob Wilson | Athletics | 71.1% | ✅ | ✅ | ✅ | ✅ | 2 |
+| 2026-03-30 | Jake Burger | Texas Rangers | 73.8% | ✅ | ✅ | ✅ | ✅ | 1 |
+| 2026-03-29 | Logan O'Hoppe | Los Angeles Angels | 80.3% | ❌ | ❌ | ✅ | ✅ | 0 |
 <!-- BTS:DAILY_LOG_END -->
 
 ### How Results Are Logged

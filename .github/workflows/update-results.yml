@@ -44,7 +44,7 @@ jobs:
         run: pip install boto3
 
       - name: Fetch latest results and update README
-        run: python3 .github/scripts/update_readme_results.py
+        run: python3 scripts/update_readme_results.py
 
       - name: Commit updated README
         run: |

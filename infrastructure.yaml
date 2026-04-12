@@ -456,6 +456,45 @@ Resources:
       LogGroupName: !Sub /aws/lambda/${Environment}-actuals-checker
       RetentionInDays: 14
 
+  # v1.5.2 HEALTH monitoring: extract WARNING-level health signals from the
+  # actuals checker Lambda logs and alert on elevated rates. The filter
+  # pattern matches "[HEALTH] WARNING:" so informational [HEALTH] lines
+  # (cold-start probes, tier summaries) don't trigger it — only explicit
+  # warnings do. See daily_predictions.py / check_actuals.py / predictions_log.py
+  # for the sites that emit these.
+  ActualsCheckerHealthFilter:
+    Type: AWS::Logs::MetricFilter
+    Condition: ScheduleEnabled
+    Properties:
+      LogGroupName: !Ref ActualsCheckerLogGroup
+      FilterPattern: '"[HEALTH] WARNING"'
+      MetricTransformations:
+        - MetricNamespace: !Sub BeatTheStreak/${Environment}
+          MetricName: HealthWarnings
+          MetricValue: "1"
+          DefaultValue: 0
+
+  ActualsCheckerHealthAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: HasAlertEmail
+    Properties:
+      AlarmName: !Sub ${Environment}-actuals-checker-health-warnings
+      AlarmDescription: >
+        Fires when the actuals checker Lambda emits 3 or more [HEALTH] WARNING
+        lines in a 24-hour window. Leading indicator of systemic issues like
+        MLB Stats API regressions, pandas layer drops, or widespread
+        name-match failures.
+      Namespace: !Sub BeatTheStreak/${Environment}
+      MetricName: HealthWarnings
+      Statistic: Sum
+      Period: 86400  # 24 hours
+      EvaluationPeriods: 1
+      Threshold: 3
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlertTopic
+
   # Actuals check: 10:00 AM ET (14:00 UTC) — runs before morning prediction trigger
   ActualsCheckerRule:
     Type: AWS::Events::Rule

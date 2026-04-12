@@ -154,6 +154,30 @@ def _write_dataframe(df: pd.DataFrame, date_str: str) -> str:
             ContentType="application/x-parquet",
         )
         logger.info(f"[predictions_log] wrote parquet: s3://{S3_BUCKET}/{key} ({len(df)} rows)")
+        # v1.5.2 HEALTH: emit enrichment metrics as a single grepable line.
+        # Counts rows where actual_hit has been resolved (not None) and how
+        # many of those are top-1 picks. Zero-resolved-actuals days are a
+        # leading indicator that the MLB Stats API lookup failed globally.
+        try:
+            if "actual_hit" in df.columns:
+                resolved = int(df["actual_hit"].notna().sum())
+            else:
+                resolved = 0
+            top1_resolved = 0
+            if "is_top_1" in df.columns and "actual_hit" in df.columns:
+                top1_resolved = int(df[df["is_top_1"] == True]["actual_hit"].notna().sum())
+            logger.info(
+                f"[predictions_log] [HEALTH] write_metrics date={date_str} "
+                f"n_rows={len(df)} n_rows_with_actuals={resolved} "
+                f"n_top_1_resolved={top1_resolved}"
+            )
+            if len(df) > 0 and resolved == 0:
+                logger.warning(
+                    f"[predictions_log] [HEALTH] WARNING: zero resolved actuals "
+                    f"for {date_str} despite {len(df)} rows — investigate"
+                )
+        except Exception as _metrics_err:
+            logger.info(f"[predictions_log] [HEALTH] metrics calc failed: {_metrics_err}")
         return key
     else:
         logger.warning(

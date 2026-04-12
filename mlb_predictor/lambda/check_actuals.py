@@ -19,6 +19,7 @@ Can also be triggered manually:
 """
 
 import os
+import sys
 import json
 import logging
 import argparse
@@ -38,6 +39,27 @@ BASE_URL = "https://statsapi.mlb.com/api/v1"
 
 def log(msg):
     print(f"[ACTUALS] {msg}", flush=True)
+
+
+# v1.5.2 HEALTH: cold-start verification. Logs once per Lambda container init
+# whether the AWS SDK for pandas layer actually loaded. If pandas is missing
+# append_actuals will silently fail inside the try/except — this log line
+# lets us distinguish "layer attached and working" from "layer dropped in a
+# bad deploy and predictions_log is dead."
+def _pandas_layer_probe():
+    try:
+        import pandas as _pd
+        import pyarrow as _pa
+        print(f"[ACTUALS] [HEALTH] pandas_layer_loaded=True "
+              f"(pandas={_pd.__version__}, pyarrow={_pa.__version__})",
+              flush=True)
+    except ImportError as e:
+        print(f"[ACTUALS] [HEALTH] WARNING: pandas_layer_loaded=False — "
+              f"predictions_log enrichment will fail ({e})",
+              flush=True)
+
+
+_pandas_layer_probe()
 
 
 def _ascii_name(name: str) -> str:
@@ -119,12 +141,22 @@ def check_tier_hit(picks: list, date_str: str) -> bool | None:
     Returns None if all results are unknown (postponed / not found).
     """
     results = []
+    failures = []  # v1.5.2 HEALTH: collect names that failed lookup
     for name in picks:
         result = get_player_hit_result(name, date_str)
         if result is True:
             return True  # Short circuit — at least one hit
         if result is not None:
             results.append(result)
+        else:
+            failures.append(name)
+
+    # v1.5.2 HEALTH: emit aggregate failure signal per tier. Individual
+    # "Player not found" logs already exist; this adds a single grepable
+    # summary so systemic issues (diacritic class) surface immediately.
+    if failures:
+        log(f"  [HEALTH] tier_lookup_failures tier_size={len(picks)} "
+            f"failed={len(failures)} names={failures}")
 
     if not results:
         return None  # All unknown

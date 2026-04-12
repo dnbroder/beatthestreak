@@ -56,7 +56,7 @@ from mlb_predictor.model import load_model
 from mlb_predictor.predictions_log import append_predictions
 
 # Bumped on every model behavior change so QuickSight can compare versions.
-MODEL_VERSION = "v1.5.1"
+MODEL_VERSION = "v1.5.2"
 
 logger = logging.getLogger("beatthestreak")
 
@@ -141,6 +141,17 @@ def get_games_for_date(date_str: str) -> list:
 
     if dh_teams:
         log(f"  Doubleheader detected for: {', '.join(dh_teams)}")
+
+    # v1.5.2 HEALTH: always log max team_game_count as a sanity signal so we
+    # can distinguish "no doubleheaders today" from "detection missed one"
+    # in CloudWatch after the fact. On 2026-04-02 detection was silent and
+    # we had no leading indicator before players showed up duplicated.
+    if team_game_count:
+        max_count = max(team_game_count.values())
+        team_with_max = max(team_game_count, key=team_game_count.get)
+        log(f"  [HEALTH] max team_game_count={max_count} ({team_with_max})")
+        if max_count > 1 and not dh_teams:
+            log(f"  [HEALTH] WARNING: max count > 1 but dh_teams empty — detection miss")
 
     log(f"Found {len(games)} games for {date_str}")
     for g in games:
@@ -469,6 +480,10 @@ def run_daily_predictions(
     total_batters_attempted = 0
     total_batters_skipped = 0
     total_api_calls = 0
+    # v1.5.2 HEALTH: track WHY each batter was skipped so CloudWatch can surface
+    # systemic issues (e.g. API name-match failures) instead of showing an
+    # opaque "skipped: N" counter.
+    skip_reasons = {"dh_dedup": 0, "no_features": 0}
 
     log("")
     log("--- Step 2-3: Lineups + Features ---")
@@ -510,6 +525,7 @@ def run_daily_predictions(
             if pid in scored_players and game.get("is_doubleheader"):
                 game_skipped += 1
                 total_batters_skipped += 1
+                skip_reasons["dh_dedup"] += 1
                 continue
             scored_players.add(pid)
 
@@ -545,6 +561,10 @@ def run_daily_predictions(
             if not features:
                 game_skipped += 1
                 total_batters_skipped += 1
+                skip_reasons["no_features"] += 1
+                # v1.5.2 HEALTH: single-line reason so grep can find it
+                log(f"    [HEALTH] SKIP no_features player={batter['player_name']} "
+                    f"(id={pid}, lineup_pos={batter.get('lineup_position', 0)})")
                 continue
 
             # Get player bio for bat side
@@ -668,6 +688,30 @@ def run_daily_predictions(
     log(f"  Confidence mean:  {pred_df['confidence_pct'].mean():.1f}%")
     log(f"  In optimal zone:  {pred_df['in_optimal_zone'].sum()} / {len(pred_df)}")
     log(f"  Platoon advantage: {pred_df['platoon_advantage'].sum()} / {len(pred_df)}")
+
+    # v1.5.2 HEALTH: confidence histogram — leading indicator of calibration
+    # drift. If the distribution suddenly bunches at 50% or all above 90%,
+    # something's wrong with the model or features. Log as a single line that
+    # CloudWatch metric filters can parse.
+    conf = pred_df["confidence_pct"]
+    hist = {
+        "lt_20":  int((conf < 20).sum()),
+        "20_40":  int(((conf >= 20) & (conf < 40)).sum()),
+        "40_60":  int(((conf >= 40) & (conf < 60)).sum()),
+        "60_80":  int(((conf >= 60) & (conf < 80)).sum()),
+        "gte_80": int((conf >= 80).sum()),
+    }
+    log(f"  [HEALTH] confidence_histogram={hist}")
+
+    # v1.5.2 HEALTH: skip reason breakdown
+    if total_batters_skipped > 0:
+        log(f"  [HEALTH] skip_reasons={skip_reasons} "
+            f"(total_skipped={total_batters_skipped}/{total_batters_attempted})")
+        # WARNING threshold: >20% of attempted batters skipped is a red flag
+        skip_pct = 100.0 * total_batters_skipped / max(total_batters_attempted, 1)
+        if skip_pct > 20:
+            log(f"  [HEALTH] WARNING: high skip rate {skip_pct:.1f}% — "
+                f"investigate MLB Stats API or feature pipeline")
 
     # Top 10 picks
     log("")

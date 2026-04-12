@@ -638,13 +638,13 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:RUNNING_RECORD_START -->
 | Metric | Value | Updated |
 |--------|-------|---------|
-| **Top-1 Hit Rate** | 64.3% | 2026-04-12 15:23 ET |
-| **Top-2 Hit Rate** | 92.9% | 2026-04-12 15:23 ET |
-| **Top-5 Hit Rate** | 100.0% | 2026-04-12 15:23 ET |
-| **Top-10 Hit Rate** | 100.0% | 2026-04-12 15:23 ET |
-| **Current Streak (Top-1)** | 2 | 2026-04-12 15:23 ET |
-| **Longest Streak (Top-1)** | 3 | 2026-04-12 15:23 ET |
-| **Dates Predicted** | 14 | 2026-04-12 15:23 ET |
+| **Top-1 Hit Rate** | 64.3% | 2026-04-12 17:33 ET |
+| **Top-2 Hit Rate** | 92.9% | 2026-04-12 17:33 ET |
+| **Top-5 Hit Rate** | 100.0% | 2026-04-12 17:33 ET |
+| **Top-10 Hit Rate** | 100.0% | 2026-04-12 17:33 ET |
+| **Current Streak (Top-1)** | 2 | 2026-04-12 17:33 ET |
+| **Longest Streak (Top-1)** | 3 | 2026-04-12 17:33 ET |
+| **Dates Predicted** | 14 | 2026-04-12 17:33 ET |
 | **Season Start** | March 25, 2026 | — |
 <!-- BTS:RUNNING_RECORD_END -->
 
@@ -653,6 +653,7 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:DAILY_LOG_START -->
 | Date | Top Pick | Team | Confidence | Top-1 | Top-2 | Top-5 | Top-10 | Top-1 Streak |
 |------|----------|------|------------|-------|-------|-------|--------|--------------|
+| 2026-04-12 | Daylen Lile | Washington Nationals | 74.2% | ⏳ | ⏳ | ⏳ | ⏳ | — |
 | 2026-04-11 | Matt Chapman | San Francisco Giants | 80.8% | ✅ | ✅ | ✅ | ✅ | 2 |
 | 2026-04-10 | Wilyer Abreu | Boston Red Sox | 80.0% | ✅ | ✅ | ✅ | ✅ | 1 |
 | 2026-04-09 | Kevin McGonigle | Detroit Tigers | 75.8% | ❌ | ✅ | ✅ | ✅ | 0 |

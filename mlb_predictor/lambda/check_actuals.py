@@ -212,6 +212,13 @@ def update_summary(summary: dict, daily_log: list) -> dict:
     summary["current_streak"] = current_streak
     summary["longest_streak"] = longest_streak
 
+    # v1.5.4 HEALTH: confirm the recompute actually ran and what it produced.
+    # Single-line grepable signal for CloudWatch so stale streak numbers in
+    # summary.json become attributable (did update_summary run but produce
+    # bad output, or did it not run at all?).
+    log(f"  [HEALTH] streak_backfill resolved_days={len(resolved)} "
+        f"current_streak={current_streak} longest_streak={longest_streak}")
+
     return summary
 
 
@@ -336,6 +343,14 @@ def run_actuals_check(date_str: str = None):
         log(f"WARNING: predictions_log.append_actuals failed: {e}")
 
     log(f"S3 updated — actuals check complete for {date_str}")
+
+    # v1.5.4 HEALTH: confirm both legacy S3 writes completed and emit the
+    # top-line stats so CloudWatch has a clean day-end summary record.
+    log(f"  [HEALTH] summary_written date={date_str} "
+        f"top1_rate_pct={summary.get('top1_hit_rate_pct', '?')} "
+        f"top5_rate_pct={summary.get('top5_hit_rate_pct', '?')} "
+        f"current_streak={summary.get('current_streak', '?')} "
+        f"dates_predicted={summary.get('dates_predicted', '?')}")
 
 
 # ---------------------------------------------------------------------------

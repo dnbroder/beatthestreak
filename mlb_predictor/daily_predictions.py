@@ -56,7 +56,7 @@ from mlb_predictor.model import load_model
 from mlb_predictor.predictions_log import append_predictions
 
 # Bumped on every model behavior change so QuickSight can compare versions.
-MODEL_VERSION = "v1.5.3"
+MODEL_VERSION = "v1.5.4"
 
 logger = logging.getLogger("beatthestreak")
 
@@ -750,6 +750,16 @@ def run_daily_predictions(
     log(f"  Top pick:   {pred_df.iloc[0]['player_name']} ({pred_df.iloc[0]['confidence_pct']}%)")
     log(f"  Pipeline:   {pipeline_time:.0f}s ({pipeline_time/60:.1f} min)")
     log("=" * 60)
+
+    # v1.5.4 HEALTH: single-line pipeline summary for CloudWatch metric filters.
+    # Warn if duration exceeds 15 min (typical run is 5-10 min) — symptom of
+    # MLB Stats API slowness or a runaway feature build.
+    log(f"  [HEALTH] pipeline_summary duration_sec={pipeline_time:.0f} "
+        f"games={len(games)} scored={len(pred_df)} "
+        f"attempted={total_batters_attempted} skipped={total_batters_skipped}")
+    if pipeline_time > 900:
+        log(f"  [HEALTH] WARNING: pipeline_duration_sec={pipeline_time:.0f} "
+            f"exceeded 900s threshold — investigate MLB Stats API latency")
 
     return pred_df
 

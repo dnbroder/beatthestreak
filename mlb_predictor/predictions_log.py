@@ -328,6 +328,23 @@ def append_predictions(
 
         df = predictions_df.copy()
 
+        # v1.5.4 HEALTH: schema drift guard. If upstream daily_predictions.py
+        # starts producing columns that LOG_COLUMNS doesn't know about (e.g.
+        # a Phase 2 pitcher feature added without updating this schema),
+        # we'd silently drop them at the parquet write. Log the unexpected
+        # columns so the omission is visible in CloudWatch.
+        known = set(LOG_COLUMNS) | {"date", "game_date", "player_name", "team",
+                                    "opponent", "venue", "opp_pitcher",
+                                    "opp_pitcher_hand", "bat_side", "rank",
+                                    "confidence_pct", "game_pk"}
+        unexpected = [c for c in df.columns if c not in known]
+        if unexpected:
+            logger.warning(
+                f"[predictions_log] [HEALTH] WARNING: schema_drift "
+                f"unexpected_columns={unexpected} — these will be dropped from "
+                f"the parquet. Update LOG_COLUMNS if these should be persisted."
+            )
+
         # Ensure game_date is set on every row
         if "game_date" not in df.columns and "date" in df.columns:
             df["game_date"] = df["date"]

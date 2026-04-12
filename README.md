@@ -561,10 +561,6 @@ Extends the AABBH methodology to the pitcher side of the matchup. Currently the 
 
 Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the `predictions_log` parquet as the MLB projection input, generates GPP-style diversified lineup portfolios with stacking and exposure caps. MLB only for v1; golf second once the abstraction is validated. Backtest framework uses RotoGuru1 historical DK salaries plus four baselines (random valid, chalk, DK-average, our optimizer) to separate projection edge from stacking edge.
 
-### AHS — Deferred
-
-"Average Hot Streak" cycles were considered but deferred. Research is mixed on whether streak-shaped features add signal beyond what existing rolling-window features already capture. Decision revisited after Phase 2 SHAP analysis.
-
 ---
 
 ## Version History

@@ -262,6 +262,36 @@ def run_actuals_check(date_str: str = None):
             append_actuals(date_str)
         except Exception as e:
             log(f"WARNING: predictions_log.append_actuals failed: {e}")
+
+        # v1.5.5: always recompute summary + per-day streaks on every
+        # invocation, even when this date's actuals are already resolved.
+        # update_summary() mutates the streak field on every entry in
+        # daily_log, so calling it here ensures historical rows get
+        # corrected whenever the Lambda runs (e.g. after a model bug fix
+        # that reseeds streak values incorrectly). Without this, the
+        # backfill only runs on dates that have NEW actuals to resolve —
+        # already-resolved dates stay stale forever.
+        try:
+            obj = s3.get_object(Bucket=S3_BUCKET, Key="predictions/latest/summary.json")
+            summary = json.loads(obj["Body"].read())
+        except Exception:
+            summary = {"season": date_str[:4]}
+        summary = update_summary(summary, daily_log)
+        s3.put_object(
+            Bucket=S3_BUCKET,
+            Key="predictions/latest/daily_log.json",
+            Body=json.dumps(daily_log, indent=2),
+            ContentType="application/json",
+        )
+        s3.put_object(
+            Bucket=S3_BUCKET,
+            Key="predictions/latest/summary.json",
+            Body=json.dumps(summary, indent=2),
+            ContentType="application/json",
+        )
+        log(f"  [HEALTH] summary_resynced date={date_str} "
+            f"current_streak={summary.get('current_streak', '?')} "
+            f"dates_predicted={summary.get('dates_predicted', '?')}")
         return
 
     log(f"Checking results for: {entry.get('top_pick')} and top 2/5/10...")

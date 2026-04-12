@@ -56,7 +56,7 @@ from mlb_predictor.model import load_model
 from mlb_predictor.predictions_log import append_predictions
 
 # Bumped on every model behavior change so QuickSight can compare versions.
-MODEL_VERSION = "v1.5.2"
+MODEL_VERSION = "v1.5.3"
 
 logger = logging.getLogger("beatthestreak")
 
@@ -878,7 +878,12 @@ def write_predictions_to_s3(df: pd.DataFrame, date_str: str):
             "top2_hit": None,    # at least 1 of top 2 got a hit
             "top5_hit": None,    # at least 1 of top 5 got a hit
             "top10_hit": None,   # at least 1 of top 10 got a hit
-            "streak": summary.get("current_streak", 0),
+            # v1.5.3: "streak" is now computed by update_summary() after actuals
+            # resolve, representing the post-result running Top-1 streak for
+            # this date. Seeding as None here (previously seeded with the
+            # PRIOR day's current_streak which made the Daily Log column
+            # misleading and disconnected from the Top-1 column on the same row).
+            "streak": None,
         }
 
         # Append today, avoid duplicates, keep last 180 days

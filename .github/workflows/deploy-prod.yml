@@ -96,6 +96,44 @@ jobs:
           aws s3 cp model_retrainer.zip s3://mlb-hit-predictor-$ENVIRONMENT-bucket/lambda/
           aws s3 cp check_actuals.zip s3://mlb-hit-predictor-$ENVIRONMENT-bucket/lambda/
 
+      # v1.5.2 fix: CloudFormation's AWS::Lambda::Function resource does NOT detect
+      # content changes to the S3 zip — it only triggers a Lambda update when the
+      # S3Bucket or S3Key parameters change. Uploading new bytes to the SAME key
+      # leaves the Lambda running its previously-loaded code until something else
+      # forces a code reload.
+      #
+      # This was caught on 2026-04-12 when v1.5.2 zips were on S3 but the Lambda
+      # kept running v1.5.1 code (no [HEALTH] probe logs despite the probe being
+      # in the deployed zip). The manual fix was `aws lambda update-function-code`
+      # against each function — which is what this step now does automatically.
+      #
+      # `update-function-code` tells Lambda to pull the latest zip from the given
+      # S3 key and reload the runtime. Idempotent, safe to run on every deploy,
+      # and only triggers a cold start on the next invocation (no traffic impact
+      # during update since Lambda handles this transparently).
+      - name: Force Lambda code reload
+        run: |
+          # Explicit function name → zip key mapping. Don't try to derive
+          # one from the other — the actuals-checker Lambda uses check_actuals.zip
+          # (not actuals_checker.zip) so any rule-based transform will break.
+          declare -A LAMBDAS=(
+            ["$ENVIRONMENT-prediction-trigger"]="lambda/prediction_trigger.zip"
+            ["$ENVIRONMENT-model-retrainer"]="lambda/model_retrainer.zip"
+            ["$ENVIRONMENT-actuals-checker"]="lambda/check_actuals.zip"
+          )
+          for FULL_NAME in "${!LAMBDAS[@]}"; do
+            ZIP_KEY="${LAMBDAS[$FULL_NAME]}"
+            echo "Reloading $FULL_NAME from s3://mlb-hit-predictor-$ENVIRONMENT-bucket/$ZIP_KEY"
+            aws lambda update-function-code \
+              --function-name "$FULL_NAME" \
+              --s3-bucket "mlb-hit-predictor-$ENVIRONMENT-bucket" \
+              --s3-key "$ZIP_KEY" \
+              --publish \
+              --no-cli-pager > /dev/null
+            aws lambda wait function-updated --function-name "$FULL_NAME"
+            echo "  ✓ $FULL_NAME reload complete"
+          done
+
       - name: Force new ECS deployment
         run: |
           SERVICE=$(aws ecs list-services --cluster $ENVIRONMENT-cluster --query 'serviceArns[0]' --output text | xargs basename)

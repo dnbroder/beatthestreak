@@ -188,15 +188,25 @@ def update_summary(summary: dict, daily_log: list) -> dict:
     summary["dates_predicted"] = len(resolved)
 
     # Current and longest streak (top-1 only)
+    # v1.5.3: also backfill the per-day "streak" field on each resolved entry
+    # so the Daily Log column in the README shows the running Top-1 streak at
+    # end of day rather than the prior day's streak (which was the v1.5.2 bug).
+    # This recomputes every time actuals land, so historical correction is
+    # automatic — no separate migration needed.
     current_streak = 0
     longest_streak = 0
     running = 0
+    resolved_by_date = {d["date"]: d for d in resolved}
     for day in sorted(resolved, key=lambda x: x["date"]):
         if day.get("top1_hit") is True:
             running += 1
             longest_streak = max(longest_streak, running)
         else:
             running = 0
+        # Write the post-result running streak back to the entry itself.
+        # This mutates the daily_log list in place since `day` is a reference
+        # into the list the caller passed in.
+        day["streak"] = running
     current_streak = running
 
     summary["current_streak"] = current_streak

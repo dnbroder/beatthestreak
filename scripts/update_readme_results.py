@@ -103,8 +103,8 @@ def build_daily_log(daily: list) -> str:
     """Render the Daily Log table as markdown, including anchor lines."""
     header = [
         DAILY_LOG_START,
-        "| Date | Top Pick | Team | Confidence | Top-1 | Top-2 | Top-5 | Top-10 | Streak |",
-        "|------|----------|------|------------|-------|-------|-------|--------|--------|",
+        "| Date | Top Pick | Team | Confidence | Top-1 | Top-2 | Top-5 | Top-10 | Top-1 Streak |",
+        "|------|----------|------|------------|-------|-------|-------|--------|--------------|",
     ]
 
     # Most recent N days, newest first
@@ -119,6 +119,11 @@ def build_daily_log(daily: list) -> str:
         for day in recent:
             conf = day.get("confidence", "—")
             conf_str = f"{conf}%" if conf != "—" else "—"
+            # v1.5.3: streak is None on days where actuals haven't resolved yet.
+            # Render as em-dash rather than "None" so unresolved rows match the
+            # em-dash convention used in the Running Record table above.
+            streak = day.get("streak")
+            streak_str = str(streak) if streak is not None else "—"
             body.append(
                 f"| {day['date']} "
                 f"| {day.get('top_pick', '—')} "
@@ -128,7 +133,7 @@ def build_daily_log(daily: list) -> str:
                 f"| {hit_cell(day.get('top2_hit'))} "
                 f"| {hit_cell(day.get('top5_hit'))} "
                 f"| {hit_cell(day.get('top10_hit'))} "
-                f"| {day.get('streak', '—')} |"
+                f"| {streak_str} |"
             )
 
     return "\n".join(header + body + [DAILY_LOG_END])

@@ -1,5 +1,24 @@
 """
-scripts/pitcher_zone_discovery.py — Phase 2 empirical analysis.
+scripts/pitcher_zone_discovery_v2.py — Phase 2 empirical analysis (v2).
+
+v2 changes from v1:
+  - Adds DE-CONFOUNDED variance analysis using normalized stddev
+    (coefficient of variation = stddev / career_aabbh). Removes the
+    entanglement between raw variance and pitcher skill level that v1
+    flagged as a confound.
+  - v1's raw-stddev tiering stays in the output for comparison — we
+    want to SEE the de-confounding effect, not just replace it silently.
+  - Zone discovery logic on the ratio axis is unchanged from v1.
+
+The v1 run showed:
+  - Hypothesis B confirmed on the ratio axis: 0.5-1.0 bucket is vulnerable
+    zone at 25.94% hit rate (spread 3.19pp).
+  - RAW variance analysis flagged "low variance = more hittable" at -2.32pp
+    spread, but career AABBH difference (low tier 3.96 vs high tier 4.32)
+    suggested the signal was confounded with pitcher skill.
+
+The v2 question: after controlling for skill level, does variance per se
+still carry signal, and in which direction?
 
 Finds the pitcher-side equivalent of the batter 0.5-1.0 optimal zone by
 bucketing per-game pitcher aabbh_ratio values and measuring the actual
@@ -652,6 +671,145 @@ def print_final_report(bucket_totals: dict, pitcher_summary: list, elapsed: floa
 
         health(f"variance_analysis_complete verdict={variance_verdict} "
                f"spread_pp={variance_spread:+.2f} n_pitchers={n}")
+
+    # -----------------------------------------------------------------
+    # De-confounded variance analysis (v2 addition).
+    # Uses normalized stddev = game_aabbh_stddev / career_aabbh
+    # (coefficient of variation). Removes the entanglement with pitcher
+    # skill level that v1 flagged as a confound.
+    # -----------------------------------------------------------------
+    log("")
+    log("=" * 70)
+    log("DE-CONFOUNDED VARIANCE ANALYSIS (v2 — normalized by career AABBH)")
+    log("=" * 70)
+    log("Coefficient of variation = game_aabbh_stddev / career_aabbh_end")
+    log("Measures: how volatile is this pitcher relative to their own mean?")
+    log("")
+
+    # Compute normalized stddev per pitcher, filter out those missing data
+    normalized = []
+    for p in pitcher_summary:
+        if (p.get("game_aabbh_stddev") is not None
+                and p.get("career_aabbh_end") is not None
+                and p["career_aabbh_end"] > 0):
+            p["normalized_stddev"] = p["game_aabbh_stddev"] / p["career_aabbh_end"]
+            normalized.append(p)
+
+    if len(normalized) < 6:
+        warn(f"normalized_variance_insufficient n={len(normalized)} — "
+             f"need >=6 pitchers with both stddev and career_aabbh, skipping")
+    else:
+        # Sort by normalized stddev, split into three equal tiers
+        normalized.sort(key=lambda p: p["normalized_stddev"])
+        nn = len(normalized)
+        low_end_n = nn // 3
+        high_start_n = 2 * nn // 3
+        low_n = normalized[:low_end_n]
+        mid_n = normalized[low_end_n:high_start_n]
+        high_n = normalized[high_start_n:]
+
+        log(f"Pitchers with normalized variance data: {nn}")
+        log(f"  Low-CV tier  (n={len(low_n)}):  "
+            f"CV {low_n[0]['normalized_stddev']:.2f} to "
+            f"{low_n[-1]['normalized_stddev']:.2f}")
+        log(f"  Mid-CV tier  (n={len(mid_n)}):  "
+            f"CV {mid_n[0]['normalized_stddev']:.2f} to "
+            f"{mid_n[-1]['normalized_stddev']:.2f}")
+        log(f"  High-CV tier (n={len(high_n)}): "
+            f"CV {high_n[0]['normalized_stddev']:.2f} to "
+            f"{high_n[-1]['normalized_stddev']:.2f}")
+        log("")
+
+        def cv_tier_stats(tier, label):
+            rates = [p["aggregate_hit_rate_allowed"] for p in tier
+                     if p.get("aggregate_hit_rate_allowed") is not None]
+            if not rates:
+                return None
+            return {
+                "label": label,
+                "n": len(tier),
+                "mean_cv": statistics.mean([p["normalized_stddev"] for p in tier]),
+                "mean_career_aabbh": statistics.mean(
+                    [p["career_aabbh_end"] for p in tier
+                     if p.get("career_aabbh_end") is not None]),
+                "mean_hit_rate_allowed": statistics.mean(rates),
+            }
+
+        cv_low = cv_tier_stats(low_n, "Low-CV")
+        cv_mid = cv_tier_stats(mid_n, "Mid-CV")
+        cv_high = cv_tier_stats(high_n, "High-CV")
+
+        log(f"{'Tier':<12} {'N':>4} {'Avg CV':>8} {'Avg AABBH':>11} "
+            f"{'Avg Hit Rate':>14}")
+        log("-" * 60)
+        for s in [cv_low, cv_mid, cv_high]:
+            if s is None:
+                continue
+            log(f"{s['label']:<12} {s['n']:>4} {s['mean_cv']:>8.3f} "
+                f"{s['mean_career_aabbh']:>11.2f} "
+                f"{s['mean_hit_rate_allowed']*100:>13.2f}%")
+
+        if cv_low and cv_high:
+            cv_spread = (cv_high["mean_hit_rate_allowed"]
+                         - cv_low["mean_hit_rate_allowed"]) * 100
+            aabbh_gap_cv = cv_low["mean_career_aabbh"] - cv_high["mean_career_aabbh"]
+
+            log("")
+            log(f"High-CV vs low-CV hit rate spread: {cv_spread:+.2f}pp")
+            log(f"Career AABBH difference (low_cv - high_cv): {aabbh_gap_cv:+.2f}")
+
+            # Is de-confounding actually working? If the AABBH gap between
+            # CV tiers is close to zero, we've successfully controlled for
+            # skill and any remaining spread is true variance effect.
+            log("")
+            if abs(aabbh_gap_cv) < 0.2:
+                log("DE-CONFOUNDING SUCCESSFUL — CV tiers have near-identical")
+                log(f"mean skill (AABBH gap {aabbh_gap_cv:+.2f} < 0.2). The")
+                log(f"{cv_spread:+.2f}pp spread represents TRUE variance signal")
+                log("independent of pitcher quality.")
+                deconfound_ok = True
+            elif abs(aabbh_gap_cv) < 0.4:
+                log("DE-CONFOUNDING PARTIAL — CV tiers still have some skill")
+                log(f"asymmetry (AABBH gap {aabbh_gap_cv:+.2f}). Signal is")
+                log("meaningfully less confounded than raw variance but not fully clean.")
+                deconfound_ok = True
+            else:
+                log("DE-CONFOUNDING FAILED — CV tiers still differ substantially")
+                log(f"in mean skill (AABBH gap {aabbh_gap_cv:+.2f}). The")
+                log("coefficient-of-variation normalization didn't resolve the")
+                log("confound. Would need a residual-based approach (Option B).")
+                deconfound_ok = False
+
+            log("")
+            if not deconfound_ok:
+                cv_verdict = "CONFOUND_UNRESOLVED"
+            elif abs(cv_spread) < 1.0:
+                log("VERDICT — De-confounded variance has WEAK signal (<1pp).")
+                log("Pitcher AABBH variance does NOT carry predictive power once")
+                log("skill is controlled for. The v1 raw-variance effect was")
+                log("confounded signal, not true signal. Do NOT add variance")
+                log("features to Phase 2. Keep the feature set lean.")
+                cv_verdict = "WEAK_AFTER_DECONFOUND"
+            elif cv_spread > 0:
+                log("VERDICT — HIGH normalized variance correlates with HIGHER")
+                log("hit rate allowed, even after controlling for skill. This is")
+                log("the original hypothesis confirmed in clean form: volatile")
+                log("pitchers are genuinely more hittable on average.")
+                log("Recommended Phase 2 feature: pitcher_aabbh_cv")
+                log("Formula: stddev_of_per_game_aabbh / career_aabbh")
+                cv_verdict = "HIGH_CV_MORE_HITTABLE"
+            else:
+                log("VERDICT — LOW normalized variance correlates with HIGHER")
+                log("hit rate allowed, even after controlling for skill.")
+                log("Consistent pitchers give up more hits. Counter to the original")
+                log("hypothesis but de-confounded so this is a real effect.")
+                log("Recommended Phase 2 feature: pitcher_aabbh_cv (inverted)")
+                log("Lower CV value = higher expected hit rate.")
+                cv_verdict = "LOW_CV_MORE_HITTABLE"
+
+            health(f"deconfounded_variance_complete verdict={cv_verdict} "
+                   f"spread_pp={cv_spread:+.2f} aabbh_gap={aabbh_gap_cv:+.2f} "
+                   f"n_pitchers={nn}")
 
 
 # ---------------------------------------------------------------------------

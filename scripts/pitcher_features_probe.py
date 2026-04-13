@@ -180,10 +180,14 @@ def stratified_select(starters: list, n_per_tier: int = 10) -> list:
 # ---------------------------------------------------------------------------
 # Split fetching
 # ---------------------------------------------------------------------------
-def fetch_split_stats(pitcher_id: int, sit_code: str, season: int) -> Optional[dict]:
+def fetch_split_stats(pitcher_id: int, sit_code: str, season: int,
+                       debug_first: bool = False) -> Optional[dict]:
     """
     Pull one specific split for a pitcher in a specific season.
     Returns the stat dict for that split, or None if unavailable.
+
+    If debug_first=True, logs the raw response shape for this sitCode
+    so we can diagnose which sitCodes work vs don't.
     """
     data = safe_get(
         f"{BASE_URL}/people/{pitcher_id}/stats",
@@ -194,6 +198,20 @@ def fetch_split_stats(pitcher_id: int, sit_code: str, season: int) -> Optional[d
             "sitCodes": sit_code,
         }
     )
+    if debug_first:
+        if data is None:
+            log(f"    [DEBUG {sit_code}] response=None")
+        else:
+            stats = data.get("stats", [])
+            if not stats:
+                log(f"    [DEBUG {sit_code}] empty stats array")
+            else:
+                splits = stats[0].get("splits", [])
+                log(f"    [DEBUG {sit_code}] splits_count={len(splits)}")
+                if splits:
+                    first_stat_keys = sorted(splits[0].get("stat", {}).keys())[:8]
+                    log(f"    [DEBUG {sit_code}] first_stat_fields (first 8): {first_stat_keys}")
+
     if not data:
         return None
 
@@ -294,7 +312,7 @@ def compute_features(splits_data: dict, career_aabbh: Optional[float],
     }
 
 
-def probe_pitcher(pitcher: dict, season: int) -> dict:
+def probe_pitcher(pitcher: dict, season: int, debug: bool = False) -> dict:
     """Pull all sitCodes for one pitcher, compute features."""
     name = pitcher["name"]
     pid = pitcher["pitcher_id"]
@@ -306,13 +324,21 @@ def probe_pitcher(pitcher: dict, season: int) -> dict:
     splits_data = {}
     successful_codes = 0
     for code in ALL_SITCODES:
-        stat = fetch_split_stats(pid, code, season)
+        stat = fetch_split_stats(pid, code, season, debug_first=debug)
         if stat:
             splits_data[code] = stat
             successful_codes += 1
+        elif not debug:
+            # Quietly note which sitCodes failed on non-debug runs for a
+            # running per-pitcher success count; aggregate diagnostic
+            # comes at the end.
+            pass
 
     elapsed = time.time() - t0
     log(f"    fetched {successful_codes}/{len(ALL_SITCODES)} sitCodes in {elapsed:.1f}s")
+    failed_codes = [c for c in ALL_SITCODES if c not in splits_data]
+    if failed_codes:
+        log(f"    failed sitCodes: {failed_codes}")
 
     features = compute_features(
         splits_data,
@@ -359,17 +385,25 @@ def distribution_stats(values: list, name: str) -> dict:
 def pearson_correlation(xs: list, ys: list) -> Optional[float]:
     """
     Compute Pearson correlation on paired values, skipping None pairs.
-    Returns None if too few valid pairs.
+    Returns None if too few valid pairs or zero variance.
+    Manual implementation — statistics.correlation requires Python 3.10+
+    and CloudShell runs 3.9.
     """
     paired = [(x, y) for x, y in zip(xs, ys) if x is not None and y is not None]
     if len(paired) < 4:
         return None
+    n = len(paired)
     x_vals = [p[0] for p in paired]
     y_vals = [p[1] for p in paired]
-    try:
-        return statistics.correlation(x_vals, y_vals)
-    except (statistics.StatisticsError, ValueError):
+    x_mean = sum(x_vals) / n
+    y_mean = sum(y_vals) / n
+    num = sum((x - x_mean) * (y - y_mean) for x, y in paired)
+    x_var = sum((x - x_mean) ** 2 for x in x_vals)
+    y_var = sum((y - y_mean) ** 2 for y in y_vals)
+    denom = (x_var * y_var) ** 0.5
+    if denom == 0:
         return None
+    return num / denom
 
 
 def print_distribution_report(features_list: list):
@@ -602,7 +636,7 @@ def main():
     for i, pitcher in enumerate(selected, 1):
         log("")
         log(f"[{i}/{len(selected)}]")
-        features = probe_pitcher(pitcher, args.season)
+        features = probe_pitcher(pitcher, args.season, debug=(i == 1))
         all_features.append(features)
 
     # Step 3-5: analysis

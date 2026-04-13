@@ -26,6 +26,18 @@ v1.5 Changes:
     in parquet for QuickSight / Athena (one row per prediction, with top-N
     flags and a stable schema across model versions). Purely additive — does
     not change daily_log.json or summary.json.
+
+v2.0 Changes (Phase 2):
+  - Adds 11 new pitcher-side features (8 AABBH-family + 3 sitCode-family)
+    to the scoring path. Features are fetched once per opposing pitcher
+    per run (in-memory cache) and joined to every batter facing that
+    pitcher for efficiency.
+  - MODEL_VERSION bumped to v2.0_pitcher_aabbh.
+  - Loads Phase 2 model from models/hit_predictor_v2.pkl if present,
+    falls back to legacy models/hit_predictor.pkl if the v2 model
+    hasn't been promoted yet.
+  - [HEALTH] logging extended to include per-pitcher cache hit counts
+    and Phase 2 feature computation stats for operational visibility.
 """
 
 import os
@@ -54,9 +66,13 @@ from mlb_predictor.feature_engineering import (
 )
 from mlb_predictor.model import load_model
 from mlb_predictor.predictions_log import append_predictions
+from mlb_predictor.pitcher_features import (
+    get_all_pitcher_features,
+    PHASE2_PITCHER_FEATURE_COLUMNS,
+)
 
 # Bumped on every model behavior change so QuickSight can compare versions.
-MODEL_VERSION = "v1.5.4"
+MODEL_VERSION = "v2.0_pitcher_aabbh"
 
 logger = logging.getLogger("beatthestreak")
 
@@ -439,6 +455,9 @@ def run_daily_predictions(
 
     Returns:
         DataFrame of ranked predictions
+
+    v2.0: Joins Phase 2 pitcher features into every batter row before
+    scoring. Opposing pitcher features are cached per run.
     """
     if date_str is None:
         date_str = datetime.now().strftime("%Y-%m-%d")
@@ -446,7 +465,7 @@ def run_daily_predictions(
         season = int(date_str[:4])
 
     log("=" * 60)
-    log(f"DAILY PREDICTIONS: {date_str}")
+    log(f"DAILY PREDICTIONS: {date_str} (model={MODEL_VERSION})")
     log("=" * 60)
     pipeline_start = time.time()
 
@@ -457,6 +476,11 @@ def run_daily_predictions(
         log("ERROR: No trained model found. Run /train first.")
         return pd.DataFrame()
     log(f"Model loaded ({len(feature_cols)} features)")
+
+    # Phase 2 detection: does the loaded model expect Phase 2 features?
+    model_expects_phase2 = any(c in feature_cols for c in PHASE2_PITCHER_FEATURE_COLUMNS)
+    log(f"  [HEALTH] model_phase2_ready={model_expects_phase2} "
+        f"phase2_feature_count={sum(1 for c in feature_cols if c in PHASE2_PITCHER_FEATURE_COLUMNS)}")
 
     # Step 1: Get games (with doubleheader detection)
     log("")
@@ -473,6 +497,14 @@ def run_daily_predictions(
     pitcher_cache = {}
     player_info_cache = {}
 
+    # Phase 2: caches for pitcher gamelog and sitCode splits — scoped to THIS
+    # prediction run so two batters facing the same pitcher share one fetch.
+    # Keys are (pitcher_id, season).
+    phase2_gamelog_cache = {}
+    phase2_sitcode_cache = {}
+    phase2_cache_hits = 0
+    phase2_cache_misses = 0
+
     # Track players already scored (for doubleheader dedup)
     scored_players = set()
 
@@ -486,7 +518,7 @@ def run_daily_predictions(
     skip_reasons = {"dh_dedup": 0, "no_features": 0}
 
     log("")
-    log("--- Step 2-3: Lineups + Features ---")
+    log("--- Step 2-3: Lineups + Features (v2.0 includes Phase 2 pitcher enrichment) ---")
 
     for game_idx, game in enumerate(games):
         game_pk = game["game_pk"]
@@ -579,7 +611,7 @@ def run_daily_predictions(
             features["bat_side_encoded"] = bat_side_map.get(bat_side, 0)
             features["is_home"] = 1 if is_home else 0
 
-            # Pitcher features
+            # Pitcher features (basic v1)
             features["pitcher_era"] = p_stats.get("pitcher_era", 4.50)
             features["pitcher_whip"] = p_stats.get("pitcher_whip", 1.30)
             features["pitcher_k_per_9"] = p_stats.get("pitcher_k_per_9", 8.5)
@@ -600,6 +632,32 @@ def run_daily_predictions(
 
             # Park factor
             features["park_factor"] = park_factor
+
+            # ----- Phase 2 pitcher features (v2.0) -----
+            if model_expects_phase2 and opp_pitcher_id:
+                # Check cache first for HEALTH metric, then call with cache
+                # (function handles cache population)
+                cache_key = (opp_pitcher_id, season)
+                if cache_key in phase2_gamelog_cache and cache_key in phase2_sitcode_cache:
+                    phase2_cache_hits += 1
+                else:
+                    phase2_cache_misses += 1
+                    total_api_calls += 3  # gamelog current + prior + sitcodes
+
+                phase2_features = get_all_pitcher_features(
+                    pitcher_id=opp_pitcher_id,
+                    season=season,
+                    as_of_date=date_str,
+                    batter_aabbh_ratio=features.get("aabbh_ratio"),
+                    lineup_position=batter.get("lineup_position", 5),
+                    gamelog_cache=phase2_gamelog_cache,
+                    sitcode_cache=phase2_sitcode_cache,
+                )
+                features.update(phase2_features)
+            elif model_expects_phase2:
+                # Model wants Phase 2 features but no pitcher ID — use defaults
+                from mlb_predictor.pitcher_features import _default_pitcher_features
+                features.update(_default_pitcher_features())
 
             # Build prediction row
             row = {
@@ -629,6 +687,13 @@ def run_daily_predictions(
 
     pred_df = pd.DataFrame(all_predictions)
 
+    # Phase 2 HEALTH log: cache efficiency summary
+    if model_expects_phase2:
+        log(f"  [HEALTH] phase2_cache_summary hits={phase2_cache_hits} "
+            f"misses={phase2_cache_misses} "
+            f"unique_pitchers={len(phase2_gamelog_cache)} "
+            f"hit_rate_pct={100*phase2_cache_hits/max(phase2_cache_hits+phase2_cache_misses, 1):.1f}")
+
     # Step 4: Score through model
     log("")
     log("--- Step 4: Model Scoring ---")
@@ -638,6 +703,7 @@ def run_daily_predictions(
     missing_cols = [col for col in feature_cols if col not in pred_df.columns]
     if missing_cols:
         log(f"  WARNING: Missing features (filling with 0): {missing_cols}")
+        log(f"  [HEALTH] WARNING: feature_columns_missing cols={missing_cols}")
     for col in feature_cols:
         if col not in pred_df.columns:
             pred_df[col] = 0
@@ -689,6 +755,14 @@ def run_daily_predictions(
     log(f"  In optimal zone:  {pred_df['in_optimal_zone'].sum()} / {len(pred_df)}")
     log(f"  Platoon advantage: {pred_df['platoon_advantage'].sum()} / {len(pred_df)}")
 
+    # Phase 2 scoring stats
+    if model_expects_phase2 and "pitcher_in_optimal_zone" in pred_df.columns:
+        log(f"  Pitcher in vulnerable zone: {pred_df['pitcher_in_optimal_zone'].sum()} / {len(pred_df)}")
+        log(f"  [HEALTH] phase2_prediction_stats "
+            f"mean_pitcher_aabbh_ratio={pred_df['pitcher_aabbh_ratio'].mean():.3f} "
+            f"mean_aabbh_interaction={pred_df['aabbh_interaction'].mean():.3f} "
+            f"pitcher_zone_hits={pred_df['pitcher_in_optimal_zone'].sum()}")
+
     # v1.5.2 HEALTH: confidence histogram — leading indicator of calibration
     # drift. If the distribution suddenly bunches at 50% or all above 90%,
     # something's wrong with the model or features. Log as a single line that
@@ -721,11 +795,12 @@ def run_daily_predictions(
     for _, row in pred_df.head(10).iterrows():
         starter_tag = "✓" if row.get("is_confirmed_starter", False) else "?"
         oz_tag = " [OZ]" if row.get("in_optimal_zone", 0) == 1 else ""
+        pz_tag = " [PZ]" if row.get("pitcher_in_optimal_zone", 0) == 1 else ""
         pa_tag = " [PA]" if row.get("platoon_advantage", 0) == 1 else ""
         log(
             f"  #{int(row['rank']):2d} [{starter_tag}] {row['player_name']:22s} "
             f"({row['team']:25s}) vs {row['opp_pitcher']:18s} ({row['opp_pitcher_hand']}) "
-            f"— {row['confidence_pct']:5.1f}%{oz_tag}{pa_tag}"
+            f"— {row['confidence_pct']:5.1f}%{oz_tag}{pz_tag}{pa_tag}"
         )
         log(
             f"       BA: {row.get('batting_avg_season', 0):.3f} | "
@@ -733,6 +808,14 @@ def run_daily_predictions(
             f"ERA: {row.get('pitcher_era', 0):.2f} | "
             f"PF: {row.get('park_factor', 1.0):.2f}"
         )
+        # Phase 2 extra line if available
+        if model_expects_phase2 and "pitcher_aabbh_ratio" in row:
+            log(
+                f"       P-AABBH: {row.get('pitcher_aabbh_career', 0):.2f} | "
+                f"P-Ratio: {row.get('pitcher_aabbh_ratio', 0):.2f} | "
+                f"P-CV: {row.get('pitcher_aabbh_cv', 0):.2f} | "
+                f"Interact: {row.get('aabbh_interaction', 0):.2f}"
+            )
 
     # Step 5: Write to S3
     if write_to_s3:
@@ -745,6 +828,7 @@ def run_daily_predictions(
     log("=" * 60)
     log("DAILY PREDICTIONS COMPLETE")
     log(f"  Date:       {date_str}")
+    log(f"  Model:      {MODEL_VERSION}")
     log(f"  Games:      {len(games)}")
     log(f"  Batters:    {len(pred_df)}")
     log(f"  Top pick:   {pred_df.iloc[0]['player_name']} ({pred_df.iloc[0]['confidence_pct']}%)")
@@ -756,7 +840,8 @@ def run_daily_predictions(
     # MLB Stats API slowness or a runaway feature build.
     log(f"  [HEALTH] pipeline_summary duration_sec={pipeline_time:.0f} "
         f"games={len(games)} scored={len(pred_df)} "
-        f"attempted={total_batters_attempted} skipped={total_batters_skipped}")
+        f"attempted={total_batters_attempted} skipped={total_batters_skipped} "
+        f"model_version={MODEL_VERSION}")
     if pipeline_time > 900:
         log(f"  [HEALTH] WARNING: pipeline_duration_sec={pipeline_time:.0f} "
             f"exceeded 900s threshold — investigate MLB Stats API latency")

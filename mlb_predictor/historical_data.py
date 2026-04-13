@@ -8,6 +8,15 @@ The Stats API endpoint:
   /api/v1/people/{playerId}/stats?stats=gameLog&group=hitting&season={year}
 
 We first get all players per season, then pull their game logs.
+
+Phase 2 addition:
+  - build_season_game_logs() now accepts enrich_pitcher_features=True
+    which pulls pitcher gameLog + statSplits per opposing starter and
+    joins in all 11 Phase 2 pitcher features at the row level. Features
+    are computed AS-OF each game's date so training respects no-leakage
+    discipline (the feature values reflect only PRIOR games).
+  - Pitcher features are cached per (pitcher_id, season) so we only hit
+    the API once per pitcher-season no matter how many batters faced them.
 """
 
 import requests
@@ -393,18 +402,39 @@ def get_season_schedule(season: int) -> dict:
 # ---------------------------------------------------------------------------
 # Master: Build full season dataset
 # ---------------------------------------------------------------------------
-def build_season_game_logs(season: int, max_players: int = None) -> pd.DataFrame:
+def build_season_game_logs(
+    season: int,
+    max_players: int = None,
+    enrich_pitcher_features: bool = False,
+    pitcher_gamelog_cache: dict = None,
+    pitcher_sitcode_cache: dict = None,
+) -> pd.DataFrame:
     """
     Build complete game log dataset for a season.
     Each row = one player's performance in one game.
     Now enriched with venue/park factors and opposing pitcher data.
 
+    Phase 2 additions:
+      - enrich_pitcher_features: if True, pulls opposing pitcher's gameLog
+        and statSplits and joins all 11 Phase 2 pitcher features per row.
+      - pitcher_gamelog_cache / pitcher_sitcode_cache: cross-call caches
+        so the same pitcher isn't re-fetched across season builds.
+
     Args:
         season: Year to pull
         max_players: Cap player count (for testing). None = all players.
+        enrich_pitcher_features: Phase 2 enrichment toggle
+        pitcher_gamelog_cache: shared dict (pitcher_id, season) -> games list
+        pitcher_sitcode_cache: shared dict (pitcher_id, season) -> sitcode dict
     """
     logger.info(f"[TRAIN] === Loading season {season} ===")
+    if enrich_pitcher_features:
+        logger.info(f"[TRAIN]   Phase 2 pitcher enrichment: ENABLED")
     season_start = time.time()
+
+    # Lazy import to avoid circular dependency during module load
+    if enrich_pitcher_features:
+        from mlb_predictor.pitcher_features import get_all_pitcher_features
 
     players = get_season_players(season)
     if players.empty:
@@ -421,11 +451,18 @@ def build_season_game_logs(season: int, max_players: int = None) -> pd.DataFrame
     # Cache pitcher season stats to avoid redundant API calls
     pitcher_stats_cache = {}
 
+    # Shared Phase 2 caches (passed in or created fresh)
+    if pitcher_gamelog_cache is None:
+        pitcher_gamelog_cache = {}
+    if pitcher_sitcode_cache is None:
+        pitcher_sitcode_cache = {}
+
     all_logs = []
     player_info_cache = {}
     total_game_rows = 0
     total_api_calls = 0
     skipped_players = 0
+    total_phase2_enrichments = 0
 
     for idx, row in players.iterrows():
         pid = row["player_id"]
@@ -456,8 +493,12 @@ def build_season_game_logs(season: int, max_players: int = None) -> pd.DataFrame
         pitcher_hands = []
         platoon_advantages = []
 
+        # Phase 2: per-game pitcher feature lists
+        phase2_features_per_game = [] if enrich_pitcher_features else None
+
         for _, game_row in logs.iterrows():
             gpk = game_row.get("game_pk")
+            game_date = game_row.get("date")
             game_data = schedule.get(gpk, {})
 
             # Park factor
@@ -501,6 +542,31 @@ def build_season_game_logs(season: int, max_players: int = None) -> pd.DataFrame
             )
             platoon_advantages.append(platoon)
 
+            # ----- Phase 2 pitcher feature enrichment -----
+            if enrich_pitcher_features:
+                if opp_pitcher_id is None or not game_date:
+                    # No pitcher or no date — use defaults, don't call API
+                    from mlb_predictor.pitcher_features import _default_pitcher_features
+                    phase2_features_per_game.append(_default_pitcher_features())
+                else:
+                    # Note: batter_aabbh_ratio and lineup_position are
+                    # NOT known at this point in the training build — they
+                    # get computed later in feature_engineering.py. We pass
+                    # None and defaults here, and the interaction feature
+                    # gets recomputed in feature_engineering after batter
+                    # AABBH is available.
+                    feats = get_all_pitcher_features(
+                        pitcher_id=opp_pitcher_id,
+                        season=season,
+                        as_of_date=game_date,
+                        batter_aabbh_ratio=None,  # filled in post-hoc
+                        lineup_position=5,        # defaults; not known yet
+                        gamelog_cache=pitcher_gamelog_cache,
+                        sitcode_cache=pitcher_sitcode_cache,
+                    )
+                    phase2_features_per_game.append(feats)
+                    total_phase2_enrichments += 1
+
         logs["park_factor"] = park_factors
         logs["pitcher_era"] = pitcher_eras
         logs["pitcher_whip"] = pitcher_whips
@@ -508,15 +574,22 @@ def build_season_game_logs(season: int, max_players: int = None) -> pd.DataFrame
         logs["pitcher_hand"] = pitcher_hands
         logs["platoon_advantage"] = platoon_advantages
 
+        # Phase 2: flatten per-game pitcher features into columns
+        if enrich_pitcher_features and phase2_features_per_game:
+            phase2_df = pd.DataFrame(phase2_features_per_game, index=logs.index)
+            for col in phase2_df.columns:
+                logs[col] = phase2_df[col]
+
         total_game_rows += len(logs)
         all_logs.append(logs)
 
         if (idx + 1) % 25 == 0:
             elapsed = time.time() - season_start
+            enriched_msg = f" | {total_phase2_enrichments} P2 enrichments" if enrich_pitcher_features else ""
             logger.info(f"[TRAIN]   {season}: {idx + 1}/{len(players)} players | "
                         f"{total_game_rows:,} game rows | "
                         f"{len(pitcher_stats_cache)} pitchers cached | "
-                        f"{total_api_calls:,} API calls | "
+                        f"{total_api_calls:,} API calls{enriched_msg} | "
                         f"{elapsed:.0f}s elapsed")
 
     if not all_logs:
@@ -530,6 +603,11 @@ def build_season_game_logs(season: int, max_players: int = None) -> pd.DataFrame
     logger.info(f"[TRAIN]   {len(pitcher_stats_cache)} unique pitchers | "
                 f"{total_api_calls:,} total API calls | "
                 f"{elapsed:.0f}s ({elapsed/60:.1f} min)")
+    if enrich_pitcher_features:
+        logger.info(f"[TRAIN]   [HEALTH] phase2_enrichment_complete season={season} "
+                    f"enrichments={total_phase2_enrichments} "
+                    f"pitcher_gamelogs_cached={len(pitcher_gamelog_cache)} "
+                    f"pitcher_sitcodes_cached={len(pitcher_sitcode_cache)}")
     return result
 
 
@@ -537,22 +615,41 @@ def build_multi_season_dataset(
     start_year: int = 2000,
     end_year: int = 2024,
     max_players_per_season: int = None,
+    enrich_pitcher_features: bool = False,
 ) -> pd.DataFrame:
     """
     Build the full historical dataset across multiple seasons.
+
+    Phase 2:
+      - enrich_pitcher_features: toggle to include all 11 Phase 2 pitcher
+        features in the output. Shares pitcher caches across seasons so
+        a pitcher who pitched in 2022 and 2023 gets 2 API calls total
+        (one per season), not 2 × N_batters.
     """
     total_seasons = end_year - start_year + 1
     logger.info(f"[TRAIN] ========================================")
     logger.info(f"[TRAIN] MULTI-SEASON BUILD: {start_year} to {end_year} ({total_seasons} seasons)")
+    if enrich_pitcher_features:
+        logger.info(f"[TRAIN] Phase 2 pitcher features: ENABLED")
     logger.info(f"[TRAIN] ========================================")
 
     all_seasons = []
     build_start = time.time()
 
+    # Shared caches across the whole multi-season build
+    pitcher_gamelog_cache = {} if enrich_pitcher_features else None
+    pitcher_sitcode_cache = {} if enrich_pitcher_features else None
+
     for i, year in enumerate(range(start_year, end_year + 1)):
         logger.info(f"[TRAIN]")
         logger.info(f"[TRAIN] --- Season {year} ({i + 1}/{total_seasons}) ---")
-        season_data = build_season_game_logs(year, max_players=max_players_per_season)
+        season_data = build_season_game_logs(
+            year,
+            max_players=max_players_per_season,
+            enrich_pitcher_features=enrich_pitcher_features,
+            pitcher_gamelog_cache=pitcher_gamelog_cache,
+            pitcher_sitcode_cache=pitcher_sitcode_cache,
+        )
         if not season_data.empty:
             all_seasons.append(season_data)
             total_rows = sum(len(s) for s in all_seasons)
@@ -572,5 +669,9 @@ def build_multi_season_dataset(
     logger.info(f"[TRAIN]   {len(full_dataset):,} total rows")
     logger.info(f"[TRAIN]   {total_seasons} seasons ({start_year}-{end_year})")
     logger.info(f"[TRAIN]   {total_time:.0f}s ({total_time/60:.1f} min)")
+    if enrich_pitcher_features:
+        logger.info(f"[TRAIN]   [HEALTH] multi_season_phase2_complete "
+                    f"gamelog_cache_size={len(pitcher_gamelog_cache)} "
+                    f"sitcode_cache_size={len(pitcher_sitcode_cache)}")
     logger.info(f"[TRAIN] ========================================")
     return full_dataset

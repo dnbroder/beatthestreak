@@ -370,7 +370,7 @@ The model uses **26 features** across five categories. All rolling/cumulative fe
 |---------|-------------|
 | `park_factor` | Venue run factor (>1.0 = hitter-friendly) |
 
-> **Phase 2 (planned):** Pitcher-side AABBH cycle features — `pitcher_aabbh_career`, `pitcher_aabbh_recent`, `pitcher_current_hitless_abs`, `pitcher_aabbh_ratio`, `pitcher_in_optimal_zone`, plus a `batter_aabbh_ratio × pitcher_aabbh_ratio` interaction term and `expected_pa_against_starter` derived from lineup slot × starter avg IP. Target: 32 total features, +1.5pp top-1 hit rate gate before promoting from shadow to production. See §10 Roadmap.
+> **Phase 2 (scrapped April 2026):** Pitcher-side AABBH features were built, trained, and backtested but failed the ship gate. V2 underperformed V1 on top-1 by 4.32pp on 185 held-out 2024 dates. See §10 Roadmap for the full post-mortem.
 
 ---
 
@@ -580,24 +580,44 @@ When `AlertEmail` is configured:
 
 ## 10. Roadmap
 
-### Phase 2 — Pitcher AABBH (planned, not yet built)
+### Phase 2 — Pitcher AABBH (SCRAPPED April 13, 2026)
 
-Extends the AABBH methodology to the pitcher side of the matchup. Currently the model asks "is this batter due for a hit?" but never asks "is this pitcher due to give one up?" Phase 2 closes that gap.
+Pitcher-side AABBH features were empirically validated, fully built, trained, and backtested. They failed the ship gate and were not promoted.
 
-**New features (+6):**
-- `pitcher_aabbh_career` — career ABs per hit allowed
-- `pitcher_aabbh_recent` — rolling over last 5 starts
-- `pitcher_current_hitless_abs` — ABs since last hit allowed
-- `pitcher_aabbh_ratio` — the overdue signal, mirror of batter side
-- `pitcher_in_optimal_zone` — sweet-spot indicator
-- `aabbh_interaction` — `batter_aabbh_ratio × pitcher_aabbh_ratio`
+**What was built:** 11 new pitcher-side features across two families:
 
-**Derived feature (+1):**
-- `expected_pa_against_starter` — from `lineup_position` and pitcher's recent avg IP/start; tells the model "this batter probably gets 2 vs. 3 cracks at the SP"
+- **AABBH family (8):** `pitcher_aabbh_career`, `pitcher_aabbh_recent`, `pitcher_current_hitless_abs`, `pitcher_aabbh_ratio`, `pitcher_in_optimal_zone` (inverted vs batter side — low ratio = vulnerable), `pitcher_aabbh_cv`, `aabbh_interaction` (batter ratio × pitcher ratio), `expected_pa_against_starter`
+- **SitCode family (3):** `pitcher_late_inning_degradation` (OPS 7th+ vs 1–6), `pitcher_pitch_count_fade` (OPS pitches 76+ vs first 75), `pitcher_first_inning_disadvantage` (OPS 1st inning vs 1–6)
 
-**Total after Phase 2:** 32 features.
+**Empirical foundation (all confirmed):**
+- Zone discovery v1 on 38 pitchers across 3,636 games showed the vulnerable zone is at LOW ratios (0.5–1.0 bucket, 25.94% hit rate vs 24.20% baseline, 3.19pp spread) — inverted from the batter side where high ratios signal overdue hitters.
+- Zone discovery v2 de-confounded variance via coefficient of variation (stddev / career_aabbh) and preserved 90% of the signal after controlling for pitcher skill. LOW-CV pitchers were reliably 2.09pp more hittable than HIGH-CV pitchers.
+- SitCode features probed on 23 pitchers showed meaningful spread (0.10–0.23 stddev), low cross-feature correlation (max \|r\| = 0.31), and acceptable skill-confound independence.
 
-**Ship gate:** Phase 2 ships to production only if a shadow-mode backtest shows **at least +1.5pp top-1 hit rate improvement** over the current production model on a held-out 2026 window. Shadow predictions write to `predictions_log` under `model_version='v2.0_pitcher_aabbh'` alongside the current version so the comparison is a single `GROUP BY` in QuickSight with real game outcomes arbitrating the decision.
+**Training (201,014 rows, 2021–2024 seasons, held-out 2024):**
+- V1 baseline (26 features): accuracy 0.5961, AUC 0.6230
+- V2 Phase 2 (37 features): accuracy 0.5953, AUC 0.6231
+- Essentially identical aggregate metrics.
+
+**Backtest on 185 held-out 2024 dates (pure holdout, training cutoff 2023-09-24):**
+
+| Metric | V1 Baseline | V2 Phase 2 | Delta |
+|--------|-------------|------------|-------|
+| Top-1 Hit Rate | **83.24%** | 78.92% | **-4.32pp** |
+| Top-2 Hit Rate | 95.14% | 95.68% | +0.54pp |
+| Top-5 Hit Rate | 98.92% | 99.46% | +0.54pp |
+| Top-10 Hit Rate | 100.00% | 100.00% | +0.00pp |
+| Longest Streak (Top-1) | 17 | 12 | -5 |
+
+**Verdict:** FAIL against the +1.5pp top-1 ship gate. Phase 2 was not promoted.
+
+**What was learned:**
+- V1 baseline trained on an extended 2021–2024 window reaches **83.24% top-1 on 185 unseen 2024 dates** — meaningfully above the published 78.9% (2021–2023 → 2024) baseline. Extra year of training data is the dominant factor, not new features.
+- V2 improved top-2/5/10 modestly (+0.54pp each). The pitcher features are being used by the model and help identify hitters in aggregate — but they push the wrong batter to the #1 slot more often than V1 does.
+- The 0.5–1.0 AABBH "vulnerable zone" effect for pitchers is a genuine empirical finding and remains part of the patent claim record. It just didn't translate to top-1 lift in a deployed model.
+- Batter-side AABBH appears to be at or near its ceiling for top-1 hit prediction on MLB. The path forward is cross-sport (NFL, golf, NBA) rather than deeper feature stacking on MLB.
+
+**Patent implications:** The provisional filing priority is preserved. The inverted-zone finding on the pitcher side is a substantive empirical result even though we declined to deploy it. If the methodology is later revisited — different model architecture, different target (top-2+ or streak length), different sport — the discovery work remains usable.
 
 ### Phase 3 — DraftKings DFS Optimizer (planned, separate repo)
 
@@ -605,7 +625,7 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 
 ### AHS — Deferred
 
-"Average Hot Streak" cycles were considered but deferred. Research is mixed on whether streak-shaped features add signal beyond what existing rolling-window features already capture. Decision revisited after Phase 2 SHAP analysis.
+"Average Hot Streak" cycles were considered but deferred. Research is mixed on whether streak-shaped features add signal beyond what existing rolling-window features already capture. Decision revisited never — given Phase 2's outcome, the investment case for further MLB feature expansion is weak.
 
 ---
 
@@ -625,6 +645,7 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 | v2.1.0 | 2026-04-10 | Analytics-grade prediction log (`predictions_log.py`), Glue database + Athena table + workgroup, AWS SDK for pandas Lambda layer, backfill script, OIDC workflow fix, `model_version` stamping, Glue/Athena/SSM IAM | Infrastructure-only release |
 | v2.2.0 | 2026-04-11 | April 2 output-side dedup fix (`drop_duplicates` in `daily_predictions.py`), diacritic name-strip in `check_actuals.py` (Jesús Sánchez class), `append_actuals` moved above idempotency early-return, `rescore_date.py` one-off rescore script | Model unchanged, data integrity fixes |
 | v2.3.0 | 2026-04-12 | HEALTH logging convention across all modules (`[HEALTH]` prefix), CloudWatch metric filter + alarm (3+ warnings/24h), cold-start pandas layer probe, confidence histogram, skip-reason tracking, schema drift guard, pipeline duration guard (>900s WARN), per-day Top-1 streak backfill in `update_summary()` fixing the misleading Daily Log streak column, anchor-based `update_readme_results.py` bot, deploy workflow forces Lambda code reload via `update-function-code --publish` (CFN doesn't detect same-key S3 content changes), `lambda:PublishVersion` added to `mlb-cicd-role` | Model unchanged, observability + deploy reliability release |
+| v2.4.0 | 2026-04-13 | Phase 2 pitcher AABBH features built, trained on 201,014 rows across 2021–2024, backtested on 185 held-out 2024 dates. FAILED ship gate: V2 top-1 78.92% vs V1 83.24% (-4.32pp). Reverted cleanly — removed `pitcher_features.py`, `train_phase2.py`, `scripts/backtest_phase2.py`; reverted `daily_predictions.py`, `feature_engineering.py`, `historical_data.py` to pre-Phase-2 state. Extended training window discovered as side effect: V1 baseline on 2021–2024 training reaches 83.24% top-1, up from 78.9% with 2021–2023 training. See §10 Roadmap for full post-mortem. | **V1 83.24% top-1 on 185 held-out 2024 dates (extended window), Phase 2 scrapped** |
 
 ---
 

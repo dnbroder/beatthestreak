@@ -25,27 +25,12 @@ Features:
     - batter_ab_vs_era_tier: sample size for that tier
     - era_tier_delta: tier-specific rate minus overall rate (specialist signal)
 
-  PITCHER (basic):
+  PITCHER:
     - pitcher_era: Opposing starter's season ERA
     - pitcher_whip: Opposing starter's WHIP
     - pitcher_hand: R/L
     - pitcher_k_per_9: Strikeouts per 9 innings
     - pitcher_recent_era: ERA over last 3-5 starts
-
-  PHASE 2 PITCHER (v2.0 — 11 new features):
-    AABBH family:
-      - pitcher_aabbh_career: Career ABs faced / hits allowed (higher = harder to hit)
-      - pitcher_aabbh_recent: Same, last 5 starts only
-      - pitcher_current_hitless_abs: ABs allowed since last hit
-      - pitcher_aabbh_ratio: current_hitless_abs / career_aabbh
-      - pitcher_in_optimal_zone: 1 if 0.5 <= ratio < 1.0 (INVERTED from batter)
-      - pitcher_aabbh_cv: per-game AABBH stddev / career_aabbh (LOW = more hittable)
-      - aabbh_interaction: batter_aabbh_ratio × pitcher_aabbh_ratio
-      - expected_pa_against_starter: lineup_pos × recent IP/start
-    SitCode family:
-      - pitcher_late_inning_degradation: OPS(innings 7+) - OPS(innings 1-6)
-      - pitcher_pitch_count_fade: OPS(pitches 76+) - OPS(first 75)
-      - pitcher_first_inning_disadvantage: OPS(1st inn) - OPS(innings 1-6)
 
   MATCHUP:
     - platoon_advantage: 1 if batter has platoon advantage, 0 otherwise
@@ -344,11 +329,6 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
     Input must have columns from historical_data.build_season_game_logs().
 
     Returns DataFrame ready for model training.
-
-    Phase 2 note: if the input df already has Phase 2 pitcher feature
-    columns (from enrich_pitcher_features=True in historical_data.py),
-    this function will also recompute aabbh_interaction now that batter
-    aabbh_ratio is known. See "Phase 2 interaction recompute" below.
     """
     logger.info(f"Engineering features for {len(df)} game log rows...")
 
@@ -448,37 +428,6 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
         df["batter_ab_vs_era_tier"] = 0
         df["era_tier_delta"] = 0.0
 
-    # ----- Phase 2 interaction recompute -----
-    # historical_data.py computes aabbh_interaction with batter_aabbh_ratio=None
-    # (it isn't known until this stage). Recompute now that we have both sides.
-    if "pitcher_aabbh_ratio" in df.columns:
-        logger.info("[PHASE2] Recomputing aabbh_interaction now that batter "
-                    "aabbh_ratio is available...")
-        df["aabbh_interaction"] = (
-            df["aabbh_ratio"].fillna(0) * df["pitcher_aabbh_ratio"].fillna(0)
-        ).round(3)
-
-        # Phase 2 sanity logging: report feature presence and null rates
-        phase2_cols = [
-            "pitcher_aabbh_career", "pitcher_aabbh_recent",
-            "pitcher_current_hitless_abs", "pitcher_aabbh_ratio",
-            "pitcher_in_optimal_zone", "pitcher_aabbh_cv",
-            "aabbh_interaction", "expected_pa_against_starter",
-            "pitcher_late_inning_degradation", "pitcher_pitch_count_fade",
-            "pitcher_first_inning_disadvantage",
-        ]
-        present_cols = [c for c in phase2_cols if c in df.columns]
-        logger.info(f"[PHASE2]   [HEALTH] phase2_features_present "
-                    f"count={len(present_cols)}/{len(phase2_cols)} "
-                    f"cols={present_cols}")
-
-        # Null rate per feature — high null rate means enrichment had gaps
-        for col in present_cols:
-            null_rate = df[col].isna().mean() * 100
-            if null_rate > 10:
-                logger.warning(f"[PHASE2]   [HEALTH] WARNING: high_null_rate "
-                               f"feature={col} pct={null_rate:.1f}%")
-
     # ----- Binary / categorical features -----
     df["is_home"] = df["is_home"].astype(int)
 
@@ -507,25 +456,6 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
     if "pitcher_k_per_9" in df.columns:
         df["pitcher_k_per_9"] = df["pitcher_k_per_9"].fillna(df["pitcher_k_per_9"].median())
 
-    # Phase 2: fill missing pitcher-feature columns with sensible defaults
-    # (not medians — defaults are domain-aware, e.g. aabbh_career=4.0)
-    phase2_defaults = {
-        "pitcher_aabbh_career": 4.0,
-        "pitcher_aabbh_recent": 4.0,
-        "pitcher_current_hitless_abs": 0,
-        "pitcher_aabbh_ratio": 0.0,
-        "pitcher_in_optimal_zone": 0,
-        "pitcher_aabbh_cv": 0.25,
-        "aabbh_interaction": 0.0,
-        "expected_pa_against_starter": 2.5,
-        "pitcher_late_inning_degradation": 0.0,
-        "pitcher_pitch_count_fade": 0.0,
-        "pitcher_first_inning_disadvantage": 0.0,
-    }
-    for col, default_val in phase2_defaults.items():
-        if col in df.columns:
-            df[col] = df[col].fillna(default_val)
-
     # ----- Recency weight -----
     df["sample_weight"] = df["season"].apply(compute_sample_weight)
 
@@ -540,9 +470,7 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 # Feature columns for model training
 # ---------------------------------------------------------------------------
-
-# Baseline (v1.x) feature columns — pre-Phase 2
-FEATURE_COLUMNS_V1 = [
+FEATURE_COLUMNS = [
     # Batter features
     "batting_avg_season",
     "avg_last_7",
@@ -581,28 +509,6 @@ FEATURE_COLUMNS_V1 = [
     # Environment
     "park_factor",
 ]
-
-# Phase 2 pitcher-side feature additions (11 new columns)
-FEATURE_COLUMNS_PHASE2 = [
-    "pitcher_aabbh_career",
-    "pitcher_aabbh_recent",
-    "pitcher_current_hitless_abs",
-    "pitcher_aabbh_ratio",
-    "pitcher_in_optimal_zone",
-    "pitcher_aabbh_cv",
-    "aabbh_interaction",
-    "expected_pa_against_starter",
-    "pitcher_late_inning_degradation",
-    "pitcher_pitch_count_fade",
-    "pitcher_first_inning_disadvantage",
-]
-
-# Full Phase 2 feature list = v1 baseline + 11 new columns = 37 features
-FEATURE_COLUMNS_V2 = FEATURE_COLUMNS_V1 + FEATURE_COLUMNS_PHASE2
-
-# Default FEATURE_COLUMNS points to v1 for backward compatibility with
-# existing production code. Phase 2 training uses FEATURE_COLUMNS_V2 explicitly.
-FEATURE_COLUMNS = FEATURE_COLUMNS_V1
 
 # Columns we can train with even before pitcher/park enrichment
 BASIC_FEATURE_COLUMNS = [

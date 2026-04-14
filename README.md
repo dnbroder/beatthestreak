@@ -659,13 +659,13 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:RUNNING_RECORD_START -->
 | Metric | Value | Updated |
 |--------|-------|---------|
-| **Top-1 Hit Rate** | 66.7% | 2026-04-13 17:59 ET |
-| **Top-2 Hit Rate** | 93.3% | 2026-04-13 17:59 ET |
-| **Top-5 Hit Rate** | 100.0% | 2026-04-13 17:59 ET |
-| **Top-10 Hit Rate** | 100.0% | 2026-04-13 17:59 ET |
-| **Current Streak (Top-1)** | 3 | 2026-04-13 17:59 ET |
-| **Longest Streak (Top-1)** | 3 | 2026-04-13 17:59 ET |
-| **Dates Predicted** | 15 | 2026-04-13 17:59 ET |
+| **Top-1 Hit Rate** | 68.8% | 2026-04-14 18:03 ET |
+| **Top-2 Hit Rate** | 93.8% | 2026-04-14 18:03 ET |
+| **Top-5 Hit Rate** | 100.0% | 2026-04-14 18:03 ET |
+| **Top-10 Hit Rate** | 100.0% | 2026-04-14 18:03 ET |
+| **Current Streak (Top-1)** | 4 | 2026-04-14 18:03 ET |
+| **Longest Streak (Top-1)** | 4 | 2026-04-14 18:03 ET |
+| **Dates Predicted** | 16 | 2026-04-14 18:03 ET |
 | **Season Start** | March 25, 2026 | — |
 <!-- BTS:RUNNING_RECORD_END -->
 
@@ -674,7 +674,8 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:DAILY_LOG_START -->
 | Date | Top Pick | Team | Confidence | Top-1 | Top-2 | Top-5 | Top-10 | Top-1 Streak |
 |------|----------|------|------------|-------|-------|-------|--------|--------------|
-| 2026-04-13 | Andy Pages | Los Angeles Dodgers | 76.0% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-04-14 | Ryan O'Hearn | Pittsburgh Pirates | 78.9% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-04-13 | Andy Pages | Los Angeles Dodgers | 76.0% | ✅ | ✅ | ✅ | ✅ | 4 |
 | 2026-04-12 | Jo Adell | Los Angeles Angels | 77.2% | ✅ | ✅ | ✅ | ✅ | 3 |
 | 2026-04-11 | Matt Chapman | San Francisco Giants | 80.8% | ✅ | ✅ | ✅ | ✅ | 2 |
 | 2026-04-10 | Wilyer Abreu | Boston Red Sox | 80.0% | ✅ | ✅ | ✅ | ✅ | 1 |

@@ -659,13 +659,13 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:RUNNING_RECORD_START -->
 | Metric | Value | Updated |
 |--------|-------|---------|
-| **Top-1 Hit Rate** | 64.7% | 2026-04-15 18:04 ET |
-| **Top-2 Hit Rate** | 94.1% | 2026-04-15 18:04 ET |
-| **Top-5 Hit Rate** | 100.0% | 2026-04-15 18:04 ET |
-| **Top-10 Hit Rate** | 100.0% | 2026-04-15 18:04 ET |
-| **Current Streak (Top-1)** | 0 | 2026-04-15 18:04 ET |
-| **Longest Streak (Top-1)** | 4 | 2026-04-15 18:04 ET |
-| **Dates Predicted** | 17 | 2026-04-15 18:04 ET |
+| **Top-1 Hit Rate** | 61.1% | 2026-04-16 18:07 ET |
+| **Top-2 Hit Rate** | 94.4% | 2026-04-16 18:07 ET |
+| **Top-5 Hit Rate** | 100.0% | 2026-04-16 18:07 ET |
+| **Top-10 Hit Rate** | 100.0% | 2026-04-16 18:07 ET |
+| **Current Streak (Top-1)** | 0 | 2026-04-16 18:07 ET |
+| **Longest Streak (Top-1)** | 4 | 2026-04-16 18:07 ET |
+| **Dates Predicted** | 18 | 2026-04-16 18:07 ET |
 | **Season Start** | March 25, 2026 | — |
 <!-- BTS:RUNNING_RECORD_END -->
 
@@ -674,7 +674,8 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:DAILY_LOG_START -->
 | Date | Top Pick | Team | Confidence | Top-1 | Top-2 | Top-5 | Top-10 | Top-1 Streak |
 |------|----------|------|------------|-------|-------|-------|--------|--------------|
-| 2026-04-15 | Jo Adell | Los Angeles Angels | 75.9% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-04-16 | Vladimir Guerrero Jr. | Toronto Blue Jays | 77.7% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-04-15 | Jo Adell | Los Angeles Angels | 75.9% | ❌ | ✅ | ✅ | ✅ | 0 |
 | 2026-04-14 | Casey Schmitt | San Francisco Giants | 76.3% | ❌ | ✅ | ✅ | ✅ | 0 |
 | 2026-04-13 | Andy Pages | Los Angeles Dodgers | 76.0% | ✅ | ✅ | ✅ | ✅ | 4 |
 | 2026-04-12 | Jo Adell | Los Angeles Angels | 77.2% | ✅ | ✅ | ✅ | ✅ | 3 |

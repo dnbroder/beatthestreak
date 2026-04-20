@@ -659,13 +659,13 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:RUNNING_RECORD_START -->
 | Metric | Value | Updated |
 |--------|-------|---------|
-| **Top-1 Hit Rate** | 66.7% | 2026-04-19 17:34 ET |
-| **Top-2 Hit Rate** | 95.2% | 2026-04-19 17:34 ET |
-| **Top-5 Hit Rate** | 100.0% | 2026-04-19 17:34 ET |
-| **Top-10 Hit Rate** | 100.0% | 2026-04-19 17:34 ET |
-| **Current Streak (Top-1)** | 3 | 2026-04-19 17:34 ET |
-| **Longest Streak (Top-1)** | 4 | 2026-04-19 17:34 ET |
-| **Dates Predicted** | 21 | 2026-04-19 17:34 ET |
+| **Top-1 Hit Rate** | 68.2% | 2026-04-20 17:56 ET |
+| **Top-2 Hit Rate** | 95.5% | 2026-04-20 17:56 ET |
+| **Top-5 Hit Rate** | 100.0% | 2026-04-20 17:56 ET |
+| **Top-10 Hit Rate** | 100.0% | 2026-04-20 17:56 ET |
+| **Current Streak (Top-1)** | 4 | 2026-04-20 17:56 ET |
+| **Longest Streak (Top-1)** | 4 | 2026-04-20 17:56 ET |
+| **Dates Predicted** | 22 | 2026-04-20 17:56 ET |
 | **Season Start** | March 25, 2026 | — |
 <!-- BTS:RUNNING_RECORD_END -->
 
@@ -674,7 +674,8 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:DAILY_LOG_START -->
 | Date | Top Pick | Team | Confidence | Top-1 | Top-2 | Top-5 | Top-10 | Top-1 Streak |
 |------|----------|------|------------|-------|-------|-------|--------|--------------|
-| 2026-04-19 | Andy Pages | Los Angeles Dodgers | 79.6% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-04-20 | Andy Pages | Los Angeles Dodgers | 78.3% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-04-19 | Andy Pages | Los Angeles Dodgers | 79.8% | ✅ | ✅ | ✅ | ✅ | 4 |
 | 2026-04-18 | Kevin McGonigle | Detroit Tigers | 81.2% | ✅ | ✅ | ✅ | ✅ | 3 |
 | 2026-04-17 | Drake Baldwin | Atlanta Braves | 79.4% | ✅ | ✅ | ✅ | ✅ | 2 |
 | 2026-04-16 | Yordan Alvarez | Houston Astros | 76.6% | ✅ | ✅ | ✅ | ✅ | 1 |

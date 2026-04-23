@@ -659,13 +659,13 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:RUNNING_RECORD_START -->
 | Metric | Value | Updated |
 |--------|-------|---------|
-| **Top-1 Hit Rate** | 66.7% | 2026-04-22 17:59 ET |
-| **Top-2 Hit Rate** | 95.8% | 2026-04-22 17:59 ET |
-| **Top-5 Hit Rate** | 100.0% | 2026-04-22 17:59 ET |
-| **Top-10 Hit Rate** | 100.0% | 2026-04-22 17:59 ET |
-| **Current Streak (Top-1)** | 0 | 2026-04-22 17:59 ET |
-| **Longest Streak (Top-1)** | 5 | 2026-04-22 17:59 ET |
-| **Dates Predicted** | 24 | 2026-04-22 17:59 ET |
+| **Top-1 Hit Rate** | 68.0% | 2026-04-23 18:05 ET |
+| **Top-2 Hit Rate** | 96.0% | 2026-04-23 18:05 ET |
+| **Top-5 Hit Rate** | 100.0% | 2026-04-23 18:05 ET |
+| **Top-10 Hit Rate** | 100.0% | 2026-04-23 18:05 ET |
+| **Current Streak (Top-1)** | 1 | 2026-04-23 18:05 ET |
+| **Longest Streak (Top-1)** | 5 | 2026-04-23 18:05 ET |
+| **Dates Predicted** | 25 | 2026-04-23 18:05 ET |
 | **Season Start** | March 25, 2026 | — |
 <!-- BTS:RUNNING_RECORD_END -->
 
@@ -674,7 +674,8 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:DAILY_LOG_START -->
 | Date | Top Pick | Team | Confidence | Top-1 | Top-2 | Top-5 | Top-10 | Top-1 Streak |
 |------|----------|------|------------|-------|-------|-------|--------|--------------|
-| 2026-04-22 | Drake Baldwin | Atlanta Braves | 78.0% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-04-23 | Mickey Moniak | Colorado Rockies | 79.9% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-04-22 | Drake Baldwin | Atlanta Braves | 78.0% | ✅ | ✅ | ✅ | ✅ | 1 |
 | 2026-04-21 | Jo Adell | Los Angeles Angels | 72.7% | ❌ | ✅ | ✅ | ✅ | 0 |
 | 2026-04-20 | Andy Pages | Los Angeles Dodgers | 78.3% | ✅ | ✅ | ✅ | ✅ | 5 |
 | 2026-04-19 | Andy Pages | Los Angeles Dodgers | 79.8% | ✅ | ✅ | ✅ | ✅ | 4 |

@@ -659,13 +659,13 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:RUNNING_RECORD_START -->
 | Metric | Value | Updated |
 |--------|-------|---------|
-| **Top-1 Hit Rate** | 69.0% | 2026-04-27 18:03 ET |
-| **Top-2 Hit Rate** | 93.1% | 2026-04-27 18:03 ET |
-| **Top-5 Hit Rate** | 100.0% | 2026-04-27 18:03 ET |
-| **Top-10 Hit Rate** | 100.0% | 2026-04-27 18:03 ET |
-| **Current Streak (Top-1)** | 2 | 2026-04-27 18:03 ET |
-| **Longest Streak (Top-1)** | 5 | 2026-04-27 18:03 ET |
-| **Dates Predicted** | 29 | 2026-04-27 18:03 ET |
+| **Top-1 Hit Rate** | 70.0% | 2026-04-28 18:16 ET |
+| **Top-2 Hit Rate** | 93.3% | 2026-04-28 18:16 ET |
+| **Top-5 Hit Rate** | 100.0% | 2026-04-28 18:16 ET |
+| **Top-10 Hit Rate** | 100.0% | 2026-04-28 18:16 ET |
+| **Current Streak (Top-1)** | 3 | 2026-04-28 18:16 ET |
+| **Longest Streak (Top-1)** | 5 | 2026-04-28 18:16 ET |
+| **Dates Predicted** | 30 | 2026-04-28 18:16 ET |
 | **Season Start** | March 25, 2026 | — |
 <!-- BTS:RUNNING_RECORD_END -->
 
@@ -674,7 +674,8 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:DAILY_LOG_START -->
 | Date | Top Pick | Team | Confidence | Top-1 | Top-2 | Top-5 | Top-10 | Top-1 Streak |
 |------|----------|------|------------|-------|-------|-------|--------|--------------|
-| 2026-04-27 | Jo Adell | Los Angeles Angels | 75.5% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-04-28 | William Contreras | Milwaukee Brewers | 74.0% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-04-27 | Jo Adell | Los Angeles Angels | 75.5% | ✅ | ✅ | ✅ | ✅ | 3 |
 | 2026-04-26 | Drake Baldwin | Atlanta Braves | 75.5% | ✅ | ✅ | ✅ | ✅ | 2 |
 | 2026-04-25 | Jo Adell | Los Angeles Angels | 75.5% | ✅ | ✅ | ✅ | ✅ | 1 |
 | 2026-04-24 | Brandon Nimmo | Texas Rangers | 74.0% | ❌ | ❌ | ✅ | ✅ | 0 |
@@ -703,7 +704,6 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 | 2026-04-01 | Javier Sanoja | Miami Marlins | 77.1% | ✅ | ✅ | ✅ | ✅ | 3 |
 | 2026-03-31 | Jacob Wilson | Athletics | 71.1% | ✅ | ✅ | ✅ | ✅ | 2 |
 | 2026-03-30 | Jake Burger | Texas Rangers | 73.8% | ✅ | ✅ | ✅ | ✅ | 1 |
-| 2026-03-29 | Logan O'Hoppe | Los Angeles Angels | 80.3% | ❌ | ❌ | ✅ | ✅ | 0 |
 <!-- BTS:DAILY_LOG_END -->
 
 ### How Results Are Logged

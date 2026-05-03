@@ -659,13 +659,13 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:RUNNING_RECORD_START -->
 | Metric | Value | Updated |
 |--------|-------|---------|
-| **Top-1 Hit Rate** | 72.7% | 2026-05-02 17:42 ET |
-| **Top-2 Hit Rate** | 93.9% | 2026-05-02 17:42 ET |
-| **Top-5 Hit Rate** | 100.0% | 2026-05-02 17:42 ET |
-| **Top-10 Hit Rate** | 100.0% | 2026-05-02 17:42 ET |
-| **Current Streak (Top-1)** | 6 | 2026-05-02 17:42 ET |
-| **Longest Streak (Top-1)** | 6 | 2026-05-02 17:42 ET |
-| **Dates Predicted** | 33 | 2026-05-02 17:42 ET |
+| **Top-1 Hit Rate** | 73.5% | 2026-05-03 17:45 ET |
+| **Top-2 Hit Rate** | 94.1% | 2026-05-03 17:45 ET |
+| **Top-5 Hit Rate** | 100.0% | 2026-05-03 17:45 ET |
+| **Top-10 Hit Rate** | 100.0% | 2026-05-03 17:45 ET |
+| **Current Streak (Top-1)** | 7 | 2026-05-03 17:45 ET |
+| **Longest Streak (Top-1)** | 7 | 2026-05-03 17:45 ET |
+| **Dates Predicted** | 34 | 2026-05-03 17:45 ET |
 | **Season Start** | March 25, 2026 | — |
 <!-- BTS:RUNNING_RECORD_END -->
 
@@ -674,7 +674,8 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:DAILY_LOG_START -->
 | Date | Top Pick | Team | Confidence | Top-1 | Top-2 | Top-5 | Top-10 | Top-1 Streak |
 |------|----------|------|------------|-------|-------|-------|--------|--------------|
-| 2026-05-02 | Jacob Wilson | Athletics | 76.5% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-05-03 | Carson Kelly | Chicago Cubs | 78.8% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-05-02 | Jacob Wilson | Athletics | 77.0% | ✅ | ✅ | ✅ | ✅ | 7 |
 | 2026-05-01 | Jorge Soler | Los Angeles Angels | 78.9% | ✅ | ✅ | ✅ | ✅ | 6 |
 | 2026-04-30 | Elly De La Cruz | Cincinnati Reds | 75.5% | ✅ | ✅ | ✅ | ✅ | 5 |
 | 2026-04-29 | Yordan Alvarez | Houston Astros | 77.9% | ⏳ | ✅ | ✅ | ✅ | — |
@@ -703,7 +704,6 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 | 2026-04-06 | Brice Turang | Milwaukee Brewers | 83.0% | ❌ | ✅ | ✅ | ✅ | 0 |
 | 2026-04-05 | Oneil Cruz | Pittsburgh Pirates | 79.5% | ✅ | ✅ | ✅ | ✅ | 3 |
 | 2026-04-04 | Yandy Díaz | Tampa Bay Rays | 81.4% | ✅ | ✅ | ✅ | ✅ | 2 |
-| 2026-04-03 | Brandon Marsh | Philadelphia Phillies | 79.7% | ✅ | ✅ | ✅ | ✅ | 1 |
 <!-- BTS:DAILY_LOG_END -->
 
 ### How Results Are Logged

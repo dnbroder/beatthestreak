@@ -659,13 +659,13 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:RUNNING_RECORD_START -->
 | Metric | Value | Updated |
 |--------|-------|---------|
-| **Top-1 Hit Rate** | 74.3% | 2026-05-04 18:13 ET |
-| **Top-2 Hit Rate** | 94.3% | 2026-05-04 18:13 ET |
-| **Top-5 Hit Rate** | 100.0% | 2026-05-04 18:13 ET |
-| **Top-10 Hit Rate** | 100.0% | 2026-05-04 18:13 ET |
-| **Current Streak (Top-1)** | 8 | 2026-05-04 18:13 ET |
-| **Longest Streak (Top-1)** | 8 | 2026-05-04 18:13 ET |
-| **Dates Predicted** | 35 | 2026-05-04 18:13 ET |
+| **Top-1 Hit Rate** | 75.0% | 2026-05-05 18:10 ET |
+| **Top-2 Hit Rate** | 94.4% | 2026-05-05 18:10 ET |
+| **Top-5 Hit Rate** | 100.0% | 2026-05-05 18:10 ET |
+| **Top-10 Hit Rate** | 100.0% | 2026-05-05 18:10 ET |
+| **Current Streak (Top-1)** | 9 | 2026-05-05 18:10 ET |
+| **Longest Streak (Top-1)** | 9 | 2026-05-05 18:10 ET |
+| **Dates Predicted** | 36 | 2026-05-05 18:10 ET |
 | **Season Start** | March 25, 2026 | — |
 <!-- BTS:RUNNING_RECORD_END -->
 
@@ -674,7 +674,8 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:DAILY_LOG_START -->
 | Date | Top Pick | Team | Confidence | Top-1 | Top-2 | Top-5 | Top-10 | Top-1 Streak |
 |------|----------|------|------------|-------|-------|-------|--------|--------------|
-| 2026-05-04 | Bo Bichette | New York Mets | 72.4% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-05-05 | Juan Soto | New York Mets | 77.2% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-05-04 | Iván Herrera | St. Louis Cardinals | 70.4% | ✅ | ✅ | ✅ | ✅ | 9 |
 | 2026-05-03 | Carson Kelly | Chicago Cubs | 77.0% | ✅ | ✅ | ✅ | ✅ | 8 |
 | 2026-05-02 | Jacob Wilson | Athletics | 77.0% | ✅ | ✅ | ✅ | ✅ | 7 |
 | 2026-05-01 | Jorge Soler | Los Angeles Angels | 78.9% | ✅ | ✅ | ✅ | ✅ | 6 |
@@ -703,7 +704,6 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 | 2026-04-08 | Troy Johnston | Colorado Rockies | 82.3% | ✅ | ✅ | ✅ | ✅ | 1 |
 | 2026-04-07 | Randy Arozarena | Seattle Mariners | 79.6% | ❌ | ✅ | ✅ | ✅ | 0 |
 | 2026-04-06 | Brice Turang | Milwaukee Brewers | 83.0% | ❌ | ✅ | ✅ | ✅ | 0 |
-| 2026-04-05 | Oneil Cruz | Pittsburgh Pirates | 79.5% | ✅ | ✅ | ✅ | ✅ | 3 |
 <!-- BTS:DAILY_LOG_END -->
 
 ### How Results Are Logged

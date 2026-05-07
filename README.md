@@ -659,13 +659,13 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:RUNNING_RECORD_START -->
 | Metric | Value | Updated |
 |--------|-------|---------|
-| **Top-1 Hit Rate** | 75.0% | 2026-05-06 18:15 ET |
-| **Top-2 Hit Rate** | 94.4% | 2026-05-06 18:15 ET |
-| **Top-5 Hit Rate** | 100.0% | 2026-05-06 18:15 ET |
-| **Top-10 Hit Rate** | 100.0% | 2026-05-06 18:15 ET |
-| **Current Streak (Top-1)** | 9 | 2026-05-06 18:15 ET |
-| **Longest Streak (Top-1)** | 9 | 2026-05-06 18:15 ET |
-| **Dates Predicted** | 36 | 2026-05-06 18:15 ET |
+| **Top-1 Hit Rate** | 73.0% | 2026-05-07 18:23 ET |
+| **Top-2 Hit Rate** | 91.9% | 2026-05-07 18:23 ET |
+| **Top-5 Hit Rate** | 100.0% | 2026-05-07 18:23 ET |
+| **Top-10 Hit Rate** | 100.0% | 2026-05-07 18:23 ET |
+| **Current Streak (Top-1)** | 0 | 2026-05-07 18:23 ET |
+| **Longest Streak (Top-1)** | 9 | 2026-05-07 18:23 ET |
+| **Dates Predicted** | 37 | 2026-05-07 18:23 ET |
 | **Season Start** | March 25, 2026 | — |
 <!-- BTS:RUNNING_RECORD_END -->
 
@@ -674,7 +674,8 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:DAILY_LOG_START -->
 | Date | Top Pick | Team | Confidence | Top-1 | Top-2 | Top-5 | Top-10 | Top-1 Streak |
 |------|----------|------|------------|-------|-------|-------|--------|--------------|
-| 2026-05-06 | Juan Soto | New York Mets | 77.2% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-05-07 | Junior Caminero | Tampa Bay Rays | 75.7% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-05-06 | Nico Hoerner | Chicago Cubs | 75.9% | ❌ | ❌ | ✅ | ✅ | 0 |
 | 2026-05-05 | Juan Soto | New York Mets | 77.2% | ⏳ | ✅ | ✅ | ✅ | — |
 | 2026-05-04 | Iván Herrera | St. Louis Cardinals | 70.4% | ✅ | ✅ | ✅ | ✅ | 9 |
 | 2026-05-03 | Carson Kelly | Chicago Cubs | 77.0% | ✅ | ✅ | ✅ | ✅ | 8 |
@@ -703,7 +704,6 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 | 2026-04-10 | Wilyer Abreu | Boston Red Sox | 80.0% | ✅ | ✅ | ✅ | ✅ | 1 |
 | 2026-04-09 | Kevin McGonigle | Detroit Tigers | 75.8% | ❌ | ✅ | ✅ | ✅ | 0 |
 | 2026-04-08 | Troy Johnston | Colorado Rockies | 82.3% | ✅ | ✅ | ✅ | ✅ | 1 |
-| 2026-04-07 | Randy Arozarena | Seattle Mariners | 79.6% | ❌ | ✅ | ✅ | ✅ | 0 |
 <!-- BTS:DAILY_LOG_END -->
 
 ### How Results Are Logged

@@ -659,13 +659,13 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:RUNNING_RECORD_START -->
 | Metric | Value | Updated |
 |--------|-------|---------|
-| **Top-1 Hit Rate** | 73.7% | 2026-05-08 18:09 ET |
-| **Top-2 Hit Rate** | 92.1% | 2026-05-08 18:09 ET |
-| **Top-5 Hit Rate** | 100.0% | 2026-05-08 18:09 ET |
-| **Top-10 Hit Rate** | 100.0% | 2026-05-08 18:09 ET |
-| **Current Streak (Top-1)** | 1 | 2026-05-08 18:09 ET |
-| **Longest Streak (Top-1)** | 9 | 2026-05-08 18:09 ET |
-| **Dates Predicted** | 38 | 2026-05-08 18:09 ET |
+| **Top-1 Hit Rate** | 74.4% | 2026-05-09 17:50 ET |
+| **Top-2 Hit Rate** | 92.3% | 2026-05-09 17:50 ET |
+| **Top-5 Hit Rate** | 100.0% | 2026-05-09 17:50 ET |
+| **Top-10 Hit Rate** | 100.0% | 2026-05-09 17:50 ET |
+| **Current Streak (Top-1)** | 2 | 2026-05-09 17:50 ET |
+| **Longest Streak (Top-1)** | 9 | 2026-05-09 17:50 ET |
+| **Dates Predicted** | 39 | 2026-05-09 17:50 ET |
 | **Season Start** | March 25, 2026 | — |
 <!-- BTS:RUNNING_RECORD_END -->
 
@@ -674,7 +674,8 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:DAILY_LOG_START -->
 | Date | Top Pick | Team | Confidence | Top-1 | Top-2 | Top-5 | Top-10 | Top-1 Streak |
 |------|----------|------|------------|-------|-------|-------|--------|--------------|
-| 2026-05-08 | Jacob Wilson | Athletics | 80.4% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-05-09 | Jacob Wilson | Athletics | 78.0% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-05-08 | Jacob Wilson | Athletics | 80.4% | ✅ | ✅ | ✅ | ✅ | 2 |
 | 2026-05-07 | Shea Langeliers | Athletics | 76.6% | ✅ | ✅ | ✅ | ✅ | 1 |
 | 2026-05-06 | Nico Hoerner | Chicago Cubs | 75.9% | ❌ | ❌ | ✅ | ✅ | 0 |
 | 2026-05-05 | Juan Soto | New York Mets | 77.2% | ⏳ | ✅ | ✅ | ✅ | — |
@@ -703,7 +704,6 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 | 2026-04-12 | Jo Adell | Los Angeles Angels | 77.2% | ✅ | ✅ | ✅ | ✅ | 3 |
 | 2026-04-11 | Matt Chapman | San Francisco Giants | 80.8% | ✅ | ✅ | ✅ | ✅ | 2 |
 | 2026-04-10 | Wilyer Abreu | Boston Red Sox | 80.0% | ✅ | ✅ | ✅ | ✅ | 1 |
-| 2026-04-09 | Kevin McGonigle | Detroit Tigers | 75.8% | ❌ | ✅ | ✅ | ✅ | 0 |
 <!-- BTS:DAILY_LOG_END -->
 
 ### How Results Are Logged

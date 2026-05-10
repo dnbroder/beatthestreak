@@ -659,13 +659,13 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:RUNNING_RECORD_START -->
 | Metric | Value | Updated |
 |--------|-------|---------|
-| **Top-1 Hit Rate** | 74.4% | 2026-05-09 17:50 ET |
-| **Top-2 Hit Rate** | 92.3% | 2026-05-09 17:50 ET |
-| **Top-5 Hit Rate** | 100.0% | 2026-05-09 17:50 ET |
-| **Top-10 Hit Rate** | 100.0% | 2026-05-09 17:50 ET |
-| **Current Streak (Top-1)** | 2 | 2026-05-09 17:50 ET |
-| **Longest Streak (Top-1)** | 9 | 2026-05-09 17:50 ET |
-| **Dates Predicted** | 39 | 2026-05-09 17:50 ET |
+| **Top-1 Hit Rate** | 72.5% | 2026-05-10 17:51 ET |
+| **Top-2 Hit Rate** | 92.5% | 2026-05-10 17:51 ET |
+| **Top-5 Hit Rate** | 100.0% | 2026-05-10 17:51 ET |
+| **Top-10 Hit Rate** | 100.0% | 2026-05-10 17:51 ET |
+| **Current Streak (Top-1)** | 0 | 2026-05-10 17:51 ET |
+| **Longest Streak (Top-1)** | 9 | 2026-05-10 17:51 ET |
+| **Dates Predicted** | 40 | 2026-05-10 17:51 ET |
 | **Season Start** | March 25, 2026 | — |
 <!-- BTS:RUNNING_RECORD_END -->
 
@@ -674,7 +674,8 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:DAILY_LOG_START -->
 | Date | Top Pick | Team | Confidence | Top-1 | Top-2 | Top-5 | Top-10 | Top-1 Streak |
 |------|----------|------|------------|-------|-------|-------|--------|--------------|
-| 2026-05-09 | Jacob Wilson | Athletics | 78.0% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-05-10 | Shea Langeliers | Athletics | 80.0% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-05-09 | Jacob Wilson | Athletics | 77.4% | ❌ | ✅ | ✅ | ✅ | 0 |
 | 2026-05-08 | Jacob Wilson | Athletics | 80.4% | ✅ | ✅ | ✅ | ✅ | 2 |
 | 2026-05-07 | Shea Langeliers | Athletics | 76.6% | ✅ | ✅ | ✅ | ✅ | 1 |
 | 2026-05-06 | Nico Hoerner | Chicago Cubs | 75.9% | ❌ | ❌ | ✅ | ✅ | 0 |
@@ -703,7 +704,6 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 | 2026-04-13 | Andy Pages | Los Angeles Dodgers | 76.0% | ✅ | ✅ | ✅ | ✅ | 4 |
 | 2026-04-12 | Jo Adell | Los Angeles Angels | 77.2% | ✅ | ✅ | ✅ | ✅ | 3 |
 | 2026-04-11 | Matt Chapman | San Francisco Giants | 80.8% | ✅ | ✅ | ✅ | ✅ | 2 |
-| 2026-04-10 | Wilyer Abreu | Boston Red Sox | 80.0% | ✅ | ✅ | ✅ | ✅ | 1 |
 <!-- BTS:DAILY_LOG_END -->
 
 ### How Results Are Logged

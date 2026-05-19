@@ -659,13 +659,13 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:RUNNING_RECORD_START -->
 | Metric | Value | Updated |
 |--------|-------|---------|
-| **Top-1 Hit Rate** | 68.8% | 2026-05-18 18:50 ET |
-| **Top-2 Hit Rate** | 91.7% | 2026-05-18 18:50 ET |
-| **Top-5 Hit Rate** | 100.0% | 2026-05-18 18:50 ET |
-| **Top-10 Hit Rate** | 100.0% | 2026-05-18 18:50 ET |
-| **Current Streak (Top-1)** | 0 | 2026-05-18 18:50 ET |
-| **Longest Streak (Top-1)** | 9 | 2026-05-18 18:50 ET |
-| **Dates Predicted** | 48 | 2026-05-18 18:50 ET |
+| **Top-1 Hit Rate** | 67.3% | 2026-05-19 18:59 ET |
+| **Top-2 Hit Rate** | 91.8% | 2026-05-19 18:59 ET |
+| **Top-5 Hit Rate** | 100.0% | 2026-05-19 18:59 ET |
+| **Top-10 Hit Rate** | 100.0% | 2026-05-19 18:59 ET |
+| **Current Streak (Top-1)** | 0 | 2026-05-19 18:59 ET |
+| **Longest Streak (Top-1)** | 9 | 2026-05-19 18:59 ET |
+| **Dates Predicted** | 49 | 2026-05-19 18:59 ET |
 | **Season Start** | March 25, 2026 | — |
 <!-- BTS:RUNNING_RECORD_END -->
 
@@ -674,7 +674,8 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:DAILY_LOG_START -->
 | Date | Top Pick | Team | Confidence | Top-1 | Top-2 | Top-5 | Top-10 | Top-1 Streak |
 |------|----------|------|------------|-------|-------|-------|--------|--------------|
-| 2026-05-18 | Luis Arraez | San Francisco Giants | 80.4% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-05-19 | Ronald Acuña Jr. | Atlanta Braves | 77.3% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-05-18 | Luis Arraez | San Francisco Giants | 80.4% | ❌ | ✅ | ✅ | ✅ | 0 |
 | 2026-05-17 | Drake Baldwin | Atlanta Braves | 79.2% | ❌ | ❌ | ✅ | ✅ | 0 |
 | 2026-05-16 | Luis Arraez | San Francisco Giants | 76.4% | ✅ | ✅ | ✅ | ✅ | 2 |
 | 2026-05-15 | Shea Langeliers | Athletics | 78.1% | ✅ | ✅ | ✅ | ✅ | 1 |
@@ -703,7 +704,6 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 | 2026-04-22 | Drake Baldwin | Atlanta Braves | 78.0% | ✅ | ✅ | ✅ | ✅ | 1 |
 | 2026-04-21 | Jo Adell | Los Angeles Angels | 72.7% | ❌ | ✅ | ✅ | ✅ | 0 |
 | 2026-04-20 | Andy Pages | Los Angeles Dodgers | 78.3% | ✅ | ✅ | ✅ | ✅ | 5 |
-| 2026-04-19 | Andy Pages | Los Angeles Dodgers | 79.8% | ✅ | ✅ | ✅ | ✅ | 4 |
 <!-- BTS:DAILY_LOG_END -->
 
 ### How Results Are Logged

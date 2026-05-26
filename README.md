@@ -659,13 +659,13 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:RUNNING_RECORD_START -->
 | Metric | Value | Updated |
 |--------|-------|---------|
-| **Top-1 Hit Rate** | 67.3% | 2026-05-25 18:24 ET |
-| **Top-2 Hit Rate** | 90.9% | 2026-05-25 18:24 ET |
-| **Top-5 Hit Rate** | 100.0% | 2026-05-25 18:24 ET |
-| **Top-10 Hit Rate** | 100.0% | 2026-05-25 18:24 ET |
-| **Current Streak (Top-1)** | 0 | 2026-05-25 18:24 ET |
-| **Longest Streak (Top-1)** | 9 | 2026-05-25 18:24 ET |
-| **Dates Predicted** | 55 | 2026-05-25 18:24 ET |
+| **Top-1 Hit Rate** | 67.9% | 2026-05-26 19:20 ET |
+| **Top-2 Hit Rate** | 91.1% | 2026-05-26 19:20 ET |
+| **Top-5 Hit Rate** | 100.0% | 2026-05-26 19:20 ET |
+| **Top-10 Hit Rate** | 100.0% | 2026-05-26 19:20 ET |
+| **Current Streak (Top-1)** | 1 | 2026-05-26 19:20 ET |
+| **Longest Streak (Top-1)** | 9 | 2026-05-26 19:20 ET |
+| **Dates Predicted** | 56 | 2026-05-26 19:20 ET |
 | **Season Start** | March 25, 2026 | — |
 <!-- BTS:RUNNING_RECORD_END -->
 
@@ -674,7 +674,8 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:DAILY_LOG_START -->
 | Date | Top Pick | Team | Confidence | Top-1 | Top-2 | Top-5 | Top-10 | Top-1 Streak |
 |------|----------|------|------------|-------|-------|-------|--------|--------------|
-| 2026-05-25 | Luis Arraez | San Francisco Giants | 77.2% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-05-26 | Aaron Judge | New York Yankees | 76.2% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-05-25 | Shea Langeliers | Athletics | 76.1% | ✅ | ✅ | ✅ | ✅ | 1 |
 | 2026-05-24 | Luis Arraez | San Francisco Giants | 74.7% | ❌ | ❌ | ✅ | ✅ | 0 |
 | 2026-05-23 | Luis Arraez | San Francisco Giants | 75.8% | ✅ | ✅ | ✅ | ✅ | 2 |
 | 2026-05-22 | Josh Jung | Texas Rangers | 82.2% | ✅ | ✅ | ✅ | ✅ | 1 |
@@ -703,7 +704,6 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 | 2026-04-29 | Yordan Alvarez | Houston Astros | 77.9% | ⏳ | ✅ | ✅ | ✅ | — |
 | 2026-04-28 | William Contreras | Milwaukee Brewers | 74.0% | ✅ | ✅ | ✅ | ✅ | 4 |
 | 2026-04-27 | Jo Adell | Los Angeles Angels | 75.5% | ✅ | ✅ | ✅ | ✅ | 3 |
-| 2026-04-26 | Drake Baldwin | Atlanta Braves | 75.5% | ✅ | ✅ | ✅ | ✅ | 2 |
 <!-- BTS:DAILY_LOG_END -->
 
 ### How Results Are Logged

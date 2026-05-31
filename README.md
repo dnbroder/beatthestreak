@@ -659,13 +659,13 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:RUNNING_RECORD_START -->
 | Metric | Value | Updated |
 |--------|-------|---------|
-| **Top-1 Hit Rate** | 68.3% | 2026-05-30 18:01 ET |
-| **Top-2 Hit Rate** | 91.7% | 2026-05-30 18:01 ET |
-| **Top-5 Hit Rate** | 100.0% | 2026-05-30 18:01 ET |
-| **Top-10 Hit Rate** | 100.0% | 2026-05-30 18:01 ET |
-| **Current Streak (Top-1)** | 2 | 2026-05-30 18:01 ET |
-| **Longest Streak (Top-1)** | 9 | 2026-05-30 18:01 ET |
-| **Dates Predicted** | 60 | 2026-05-30 18:01 ET |
+| **Top-1 Hit Rate** | 67.2% | 2026-05-31 18:00 ET |
+| **Top-2 Hit Rate** | 91.8% | 2026-05-31 18:00 ET |
+| **Top-5 Hit Rate** | 100.0% | 2026-05-31 18:00 ET |
+| **Top-10 Hit Rate** | 100.0% | 2026-05-31 18:00 ET |
+| **Current Streak (Top-1)** | 0 | 2026-05-31 18:00 ET |
+| **Longest Streak (Top-1)** | 9 | 2026-05-31 18:00 ET |
+| **Dates Predicted** | 61 | 2026-05-31 18:00 ET |
 | **Season Start** | March 25, 2026 | — |
 <!-- BTS:RUNNING_RECORD_END -->
 
@@ -674,7 +674,8 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:DAILY_LOG_START -->
 | Date | Top Pick | Team | Confidence | Top-1 | Top-2 | Top-5 | Top-10 | Top-1 Streak |
 |------|----------|------|------------|-------|-------|-------|--------|--------------|
-| 2026-05-30 | Luis Arraez | San Francisco Giants | 79.1% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-05-31 | Luis Arraez | San Francisco Giants | 77.6% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-05-30 | Luis Arraez | San Francisco Giants | 79.1% | ❌ | ✅ | ✅ | ✅ | 0 |
 | 2026-05-29 | Matt Olson | Atlanta Braves | 74.9% | ✅ | ✅ | ✅ | ✅ | 2 |
 | 2026-05-28 | Sam Antonacci | Chicago White Sox | 75.3% | ✅ | ✅ | ✅ | ✅ | 1 |
 | 2026-05-27 | Junior Caminero | Tampa Bay Rays | 76.5% | ❌ | ✅ | ✅ | ✅ | 0 |
@@ -703,7 +704,6 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 | 2026-05-04 | Iván Herrera | St. Louis Cardinals | 70.4% | ✅ | ✅ | ✅ | ✅ | 9 |
 | 2026-05-03 | Carson Kelly | Chicago Cubs | 77.0% | ✅ | ✅ | ✅ | ✅ | 8 |
 | 2026-05-02 | Jacob Wilson | Athletics | 77.0% | ✅ | ✅ | ✅ | ✅ | 7 |
-| 2026-05-01 | Jorge Soler | Los Angeles Angels | 78.9% | ✅ | ✅ | ✅ | ✅ | 6 |
 <!-- BTS:DAILY_LOG_END -->
 
 ### How Results Are Logged

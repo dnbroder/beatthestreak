@@ -659,13 +659,13 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:RUNNING_RECORD_START -->
 | Metric | Value | Updated |
 |--------|-------|---------|
-| **Top-1 Hit Rate** | 67.2% | 2026-05-31 18:00 ET |
-| **Top-2 Hit Rate** | 91.8% | 2026-05-31 18:00 ET |
-| **Top-5 Hit Rate** | 100.0% | 2026-05-31 18:00 ET |
-| **Top-10 Hit Rate** | 100.0% | 2026-05-31 18:00 ET |
-| **Current Streak (Top-1)** | 0 | 2026-05-31 18:00 ET |
-| **Longest Streak (Top-1)** | 9 | 2026-05-31 18:00 ET |
-| **Dates Predicted** | 61 | 2026-05-31 18:00 ET |
+| **Top-1 Hit Rate** | 67.7% | 2026-06-01 20:53 ET |
+| **Top-2 Hit Rate** | 91.9% | 2026-06-01 20:53 ET |
+| **Top-5 Hit Rate** | 100.0% | 2026-06-01 20:53 ET |
+| **Top-10 Hit Rate** | 100.0% | 2026-06-01 20:53 ET |
+| **Current Streak (Top-1)** | 1 | 2026-06-01 20:53 ET |
+| **Longest Streak (Top-1)** | 9 | 2026-06-01 20:53 ET |
+| **Dates Predicted** | 62 | 2026-06-01 20:53 ET |
 | **Season Start** | March 25, 2026 | — |
 <!-- BTS:RUNNING_RECORD_END -->
 
@@ -674,7 +674,8 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:DAILY_LOG_START -->
 | Date | Top Pick | Team | Confidence | Top-1 | Top-2 | Top-5 | Top-10 | Top-1 Streak |
 |------|----------|------|------------|-------|-------|-------|--------|--------------|
-| 2026-05-31 | Luis Arraez | San Francisco Giants | 77.6% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-06-01 | JJ Bleday | Cincinnati Reds | 74.9% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-05-31 | Luis Arraez | San Francisco Giants | 78.7% | ✅ | ✅ | ✅ | ✅ | 1 |
 | 2026-05-30 | Luis Arraez | San Francisco Giants | 79.1% | ❌ | ✅ | ✅ | ✅ | 0 |
 | 2026-05-29 | Matt Olson | Atlanta Braves | 74.9% | ✅ | ✅ | ✅ | ✅ | 2 |
 | 2026-05-28 | Sam Antonacci | Chicago White Sox | 75.3% | ✅ | ✅ | ✅ | ✅ | 1 |
@@ -703,7 +704,6 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 | 2026-05-05 | Juan Soto | New York Mets | 77.2% | ⏳ | ✅ | ✅ | ✅ | — |
 | 2026-05-04 | Iván Herrera | St. Louis Cardinals | 70.4% | ✅ | ✅ | ✅ | ✅ | 9 |
 | 2026-05-03 | Carson Kelly | Chicago Cubs | 77.0% | ✅ | ✅ | ✅ | ✅ | 8 |
-| 2026-05-02 | Jacob Wilson | Athletics | 77.0% | ✅ | ✅ | ✅ | ✅ | 7 |
 <!-- BTS:DAILY_LOG_END -->
 
 ### How Results Are Logged

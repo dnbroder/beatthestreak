@@ -659,13 +659,13 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:RUNNING_RECORD_START -->
 | Metric | Value | Updated |
 |--------|-------|---------|
-| **Top-1 Hit Rate** | 70.6% | 2026-06-07 18:02 ET |
-| **Top-2 Hit Rate** | 92.6% | 2026-06-07 18:02 ET |
-| **Top-5 Hit Rate** | 100.0% | 2026-06-07 18:02 ET |
-| **Top-10 Hit Rate** | 100.0% | 2026-06-07 18:02 ET |
-| **Current Streak (Top-1)** | 7 | 2026-06-07 18:02 ET |
-| **Longest Streak (Top-1)** | 9 | 2026-06-07 18:02 ET |
-| **Dates Predicted** | 68 | 2026-06-07 18:02 ET |
+| **Top-1 Hit Rate** | 71.0% | 2026-06-08 19:20 ET |
+| **Top-2 Hit Rate** | 92.8% | 2026-06-08 19:20 ET |
+| **Top-5 Hit Rate** | 100.0% | 2026-06-08 19:20 ET |
+| **Top-10 Hit Rate** | 100.0% | 2026-06-08 19:20 ET |
+| **Current Streak (Top-1)** | 8 | 2026-06-08 19:20 ET |
+| **Longest Streak (Top-1)** | 9 | 2026-06-08 19:20 ET |
+| **Dates Predicted** | 69 | 2026-06-08 19:20 ET |
 | **Season Start** | March 25, 2026 | — |
 <!-- BTS:RUNNING_RECORD_END -->
 
@@ -674,7 +674,8 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:DAILY_LOG_START -->
 | Date | Top Pick | Team | Confidence | Top-1 | Top-2 | Top-5 | Top-10 | Top-1 Streak |
 |------|----------|------|------------|-------|-------|-------|--------|--------------|
-| 2026-06-07 | Brandon Marsh | Philadelphia Phillies | 77.2% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-06-08 | Yordan Alvarez | Houston Astros | 79.2% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-06-07 | Brandon Marsh | Philadelphia Phillies | 77.9% | ✅ | ✅ | ✅ | ✅ | 8 |
 | 2026-06-06 | Yordan Alvarez | Houston Astros | 82.9% | ✅ | ✅ | ✅ | ✅ | 7 |
 | 2026-06-05 | Luis Arraez | San Francisco Giants | 76.6% | ✅ | ✅ | ✅ | ✅ | 6 |
 | 2026-06-04 | Yordan Alvarez | Houston Astros | 78.8% | ✅ | ✅ | ✅ | ✅ | 5 |
@@ -703,7 +704,6 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 | 2026-05-12 | Julio Rodríguez | Seattle Mariners | 79.2% | ❌ | ✅ | ✅ | ✅ | 0 |
 | 2026-05-11 | Luis Arraez | San Francisco Giants | 77.4% | ✅ | ✅ | ✅ | ✅ | 1 |
 | 2026-05-10 | Shea Langeliers | Athletics | 76.2% | ❌ | ✅ | ✅ | ✅ | 0 |
-| 2026-05-09 | Jacob Wilson | Athletics | 77.4% | ❌ | ✅ | ✅ | ✅ | 0 |
 <!-- BTS:DAILY_LOG_END -->
 
 ### How Results Are Logged

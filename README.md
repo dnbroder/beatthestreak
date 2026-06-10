@@ -659,13 +659,13 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:RUNNING_RECORD_START -->
 | Metric | Value | Updated |
 |--------|-------|---------|
-| **Top-1 Hit Rate** | 70.0% | 2026-06-09 19:11 ET |
-| **Top-2 Hit Rate** | 92.9% | 2026-06-09 19:11 ET |
-| **Top-5 Hit Rate** | 100.0% | 2026-06-09 19:11 ET |
-| **Top-10 Hit Rate** | 100.0% | 2026-06-09 19:11 ET |
-| **Current Streak (Top-1)** | 0 | 2026-06-09 19:11 ET |
-| **Longest Streak (Top-1)** | 9 | 2026-06-09 19:11 ET |
-| **Dates Predicted** | 70 | 2026-06-09 19:11 ET |
+| **Top-1 Hit Rate** | 70.4% | 2026-06-10 19:34 ET |
+| **Top-2 Hit Rate** | 93.0% | 2026-06-10 19:34 ET |
+| **Top-5 Hit Rate** | 100.0% | 2026-06-10 19:34 ET |
+| **Top-10 Hit Rate** | 100.0% | 2026-06-10 19:34 ET |
+| **Current Streak (Top-1)** | 1 | 2026-06-10 19:34 ET |
+| **Longest Streak (Top-1)** | 9 | 2026-06-10 19:34 ET |
+| **Dates Predicted** | 71 | 2026-06-10 19:34 ET |
 | **Season Start** | March 25, 2026 | — |
 <!-- BTS:RUNNING_RECORD_END -->
 
@@ -674,7 +674,8 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:DAILY_LOG_START -->
 | Date | Top Pick | Team | Confidence | Top-1 | Top-2 | Top-5 | Top-10 | Top-1 Streak |
 |------|----------|------|------------|-------|-------|-------|--------|--------------|
-| 2026-06-09 | Pete Crow-Armstrong | Chicago Cubs | 77.7% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-06-10 | Alex Bregman | Chicago Cubs | 78.1% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-06-09 | Julio Rodríguez | Seattle Mariners | 75.3% | ✅ | ✅ | ✅ | ✅ | 1 |
 | 2026-06-08 | Yordan Alvarez | Houston Astros | 79.2% | ❌ | ✅ | ✅ | ✅ | 0 |
 | 2026-06-07 | Brandon Marsh | Philadelphia Phillies | 77.9% | ✅ | ✅ | ✅ | ✅ | 8 |
 | 2026-06-06 | Yordan Alvarez | Houston Astros | 82.9% | ✅ | ✅ | ✅ | ✅ | 7 |
@@ -703,7 +704,6 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 | 2026-05-14 | Ryan Jeffers | Minnesota Twins | 81.8% | ❌ | ✅ | ✅ | ✅ | 0 |
 | 2026-05-13 | Wilyer Abreu | Boston Red Sox | 77.3% | ✅ | ✅ | ✅ | ✅ | 1 |
 | 2026-05-12 | Julio Rodríguez | Seattle Mariners | 79.2% | ❌ | ✅ | ✅ | ✅ | 0 |
-| 2026-05-11 | Luis Arraez | San Francisco Giants | 77.4% | ✅ | ✅ | ✅ | ✅ | 1 |
 <!-- BTS:DAILY_LOG_END -->
 
 ### How Results Are Logged

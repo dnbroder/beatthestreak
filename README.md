@@ -659,13 +659,13 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:RUNNING_RECORD_START -->
 | Metric | Value | Updated |
 |--------|-------|---------|
-| **Top-1 Hit Rate** | 70.8% | 2026-06-11 19:35 ET |
-| **Top-2 Hit Rate** | 93.1% | 2026-06-11 19:35 ET |
-| **Top-5 Hit Rate** | 100.0% | 2026-06-11 19:35 ET |
-| **Top-10 Hit Rate** | 100.0% | 2026-06-11 19:35 ET |
-| **Current Streak (Top-1)** | 2 | 2026-06-11 19:35 ET |
-| **Longest Streak (Top-1)** | 9 | 2026-06-11 19:35 ET |
-| **Dates Predicted** | 72 | 2026-06-11 19:35 ET |
+| **Top-1 Hit Rate** | 71.2% | 2026-06-12 19:03 ET |
+| **Top-2 Hit Rate** | 93.2% | 2026-06-12 19:03 ET |
+| **Top-5 Hit Rate** | 100.0% | 2026-06-12 19:03 ET |
+| **Top-10 Hit Rate** | 100.0% | 2026-06-12 19:03 ET |
+| **Current Streak (Top-1)** | 3 | 2026-06-12 19:03 ET |
+| **Longest Streak (Top-1)** | 9 | 2026-06-12 19:03 ET |
+| **Dates Predicted** | 73 | 2026-06-12 19:03 ET |
 | **Season Start** | March 25, 2026 | — |
 <!-- BTS:RUNNING_RECORD_END -->
 
@@ -674,7 +674,8 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:DAILY_LOG_START -->
 | Date | Top Pick | Team | Confidence | Top-1 | Top-2 | Top-5 | Top-10 | Top-1 Streak |
 |------|----------|------|------------|-------|-------|-------|--------|--------------|
-| 2026-06-11 | Liam Hicks | Miami Marlins | 71.4% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-06-12 | Wilyer Abreu | Boston Red Sox | 74.1% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-06-11 | Alex Bregman | Chicago Cubs | 76.8% | ✅ | ✅ | ✅ | ✅ | 3 |
 | 2026-06-10 | Shea Langeliers | Athletics | 75.0% | ✅ | ✅ | ✅ | ✅ | 2 |
 | 2026-06-09 | Julio Rodríguez | Seattle Mariners | 75.3% | ✅ | ✅ | ✅ | ✅ | 1 |
 | 2026-06-08 | Yordan Alvarez | Houston Astros | 79.2% | ❌ | ✅ | ✅ | ✅ | 0 |
@@ -703,7 +704,6 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 | 2026-05-16 | Luis Arraez | San Francisco Giants | 76.4% | ✅ | ✅ | ✅ | ✅ | 2 |
 | 2026-05-15 | Shea Langeliers | Athletics | 78.1% | ✅ | ✅ | ✅ | ✅ | 1 |
 | 2026-05-14 | Ryan Jeffers | Minnesota Twins | 81.8% | ❌ | ✅ | ✅ | ✅ | 0 |
-| 2026-05-13 | Wilyer Abreu | Boston Red Sox | 77.3% | ✅ | ✅ | ✅ | ✅ | 1 |
 <!-- BTS:DAILY_LOG_END -->
 
 ### How Results Are Logged

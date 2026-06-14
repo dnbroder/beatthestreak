@@ -659,13 +659,13 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:RUNNING_RECORD_START -->
 | Metric | Value | Updated |
 |--------|-------|---------|
-| **Top-1 Hit Rate** | 71.6% | 2026-06-13 18:05 ET |
-| **Top-2 Hit Rate** | 93.2% | 2026-06-13 18:05 ET |
-| **Top-5 Hit Rate** | 100.0% | 2026-06-13 18:05 ET |
-| **Top-10 Hit Rate** | 100.0% | 2026-06-13 18:05 ET |
-| **Current Streak (Top-1)** | 4 | 2026-06-13 18:05 ET |
-| **Longest Streak (Top-1)** | 9 | 2026-06-13 18:05 ET |
-| **Dates Predicted** | 74 | 2026-06-13 18:05 ET |
+| **Top-1 Hit Rate** | 72.0% | 2026-06-14 18:10 ET |
+| **Top-2 Hit Rate** | 93.3% | 2026-06-14 18:10 ET |
+| **Top-5 Hit Rate** | 100.0% | 2026-06-14 18:10 ET |
+| **Top-10 Hit Rate** | 100.0% | 2026-06-14 18:10 ET |
+| **Current Streak (Top-1)** | 5 | 2026-06-14 18:10 ET |
+| **Longest Streak (Top-1)** | 9 | 2026-06-14 18:10 ET |
+| **Dates Predicted** | 75 | 2026-06-14 18:10 ET |
 | **Season Start** | March 25, 2026 | — |
 <!-- BTS:RUNNING_RECORD_END -->
 
@@ -674,7 +674,8 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:DAILY_LOG_START -->
 | Date | Top Pick | Team | Confidence | Top-1 | Top-2 | Top-5 | Top-10 | Top-1 Streak |
 |------|----------|------|------------|-------|-------|-------|--------|--------------|
-| 2026-06-13 | Jacob Wilson | Athletics | 80.2% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-06-14 | Junior Caminero | Tampa Bay Rays | 73.7% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-06-13 | Jacob Wilson | Athletics | 80.2% | ✅ | ✅ | ✅ | ✅ | 5 |
 | 2026-06-12 | Wilyer Abreu | Boston Red Sox | 74.1% | ✅ | ✅ | ✅ | ✅ | 4 |
 | 2026-06-11 | Alex Bregman | Chicago Cubs | 76.8% | ✅ | ✅ | ✅ | ✅ | 3 |
 | 2026-06-10 | Shea Langeliers | Athletics | 75.0% | ✅ | ✅ | ✅ | ✅ | 2 |
@@ -703,7 +704,6 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 | 2026-05-18 | Luis Arraez | San Francisco Giants | 80.4% | ❌ | ✅ | ✅ | ✅ | 0 |
 | 2026-05-17 | Drake Baldwin | Atlanta Braves | 79.2% | ❌ | ❌ | ✅ | ✅ | 0 |
 | 2026-05-16 | Luis Arraez | San Francisco Giants | 76.4% | ✅ | ✅ | ✅ | ✅ | 2 |
-| 2026-05-15 | Shea Langeliers | Athletics | 78.1% | ✅ | ✅ | ✅ | ✅ | 1 |
 <!-- BTS:DAILY_LOG_END -->
 
 ### How Results Are Logged

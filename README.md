@@ -659,13 +659,13 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:RUNNING_RECORD_START -->
 | Metric | Value | Updated |
 |--------|-------|---------|
-| **Top-1 Hit Rate** | 70.0% | 2026-06-20 18:09 ET |
-| **Top-2 Hit Rate** | 92.5% | 2026-06-20 18:09 ET |
-| **Top-5 Hit Rate** | 100.0% | 2026-06-20 18:09 ET |
-| **Top-10 Hit Rate** | 100.0% | 2026-06-20 18:09 ET |
-| **Current Streak (Top-1)** | 1 | 2026-06-20 18:09 ET |
-| **Longest Streak (Top-1)** | 9 | 2026-06-20 18:09 ET |
-| **Dates Predicted** | 80 | 2026-06-20 18:09 ET |
+| **Top-1 Hit Rate** | 70.4% | 2026-06-21 18:18 ET |
+| **Top-2 Hit Rate** | 92.6% | 2026-06-21 18:18 ET |
+| **Top-5 Hit Rate** | 100.0% | 2026-06-21 18:18 ET |
+| **Top-10 Hit Rate** | 100.0% | 2026-06-21 18:18 ET |
+| **Current Streak (Top-1)** | 2 | 2026-06-21 18:18 ET |
+| **Longest Streak (Top-1)** | 9 | 2026-06-21 18:18 ET |
+| **Dates Predicted** | 81 | 2026-06-21 18:18 ET |
 | **Season Start** | March 25, 2026 | — |
 <!-- BTS:RUNNING_RECORD_END -->
 
@@ -674,7 +674,8 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:DAILY_LOG_START -->
 | Date | Top Pick | Team | Confidence | Top-1 | Top-2 | Top-5 | Top-10 | Top-1 Streak |
 |------|----------|------|------------|-------|-------|-------|--------|--------------|
-| 2026-06-20 | Byron Buxton | Minnesota Twins | 76.0% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-06-21 | Luis Arraez | San Francisco Giants | 80.2% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-06-20 | Byron Buxton | Minnesota Twins | 76.0% | ✅ | ✅ | ✅ | ✅ | 2 |
 | 2026-06-19 | Shohei Ohtani | Los Angeles Dodgers | 75.8% | ⏳ | ✅ | ✅ | ✅ | — |
 | 2026-06-18 | Bobby Witt Jr. | Kansas City Royals | 73.4% | ✅ | ✅ | ✅ | ✅ | 1 |
 | 2026-06-17 | Otto Lopez | Miami Marlins | 78.3% | ❌ | ✅ | ✅ | ✅ | 0 |
@@ -703,7 +704,6 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 | 2026-05-25 | Shea Langeliers | Athletics | 76.1% | ✅ | ✅ | ✅ | ✅ | 1 |
 | 2026-05-24 | Luis Arraez | San Francisco Giants | 74.7% | ❌ | ❌ | ✅ | ✅ | 0 |
 | 2026-05-23 | Luis Arraez | San Francisco Giants | 75.8% | ✅ | ✅ | ✅ | ✅ | 2 |
-| 2026-05-22 | Josh Jung | Texas Rangers | 82.2% | ✅ | ✅ | ✅ | ✅ | 1 |
 <!-- BTS:DAILY_LOG_END -->
 
 ### How Results Are Logged

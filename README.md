@@ -659,13 +659,13 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:RUNNING_RECORD_START -->
 | Metric | Value | Updated |
 |--------|-------|---------|
-| **Top-1 Hit Rate** | 70.7% | 2026-06-22 20:07 ET |
-| **Top-2 Hit Rate** | 92.7% | 2026-06-22 20:07 ET |
-| **Top-5 Hit Rate** | 100.0% | 2026-06-22 20:07 ET |
-| **Top-10 Hit Rate** | 100.0% | 2026-06-22 20:07 ET |
-| **Current Streak (Top-1)** | 3 | 2026-06-22 20:07 ET |
-| **Longest Streak (Top-1)** | 9 | 2026-06-22 20:07 ET |
-| **Dates Predicted** | 82 | 2026-06-22 20:07 ET |
+| **Top-1 Hit Rate** | 70.7% | 2026-06-23 19:08 ET |
+| **Top-2 Hit Rate** | 92.7% | 2026-06-23 19:08 ET |
+| **Top-5 Hit Rate** | 100.0% | 2026-06-23 19:08 ET |
+| **Top-10 Hit Rate** | 100.0% | 2026-06-23 19:08 ET |
+| **Current Streak (Top-1)** | 3 | 2026-06-23 19:08 ET |
+| **Longest Streak (Top-1)** | 9 | 2026-06-23 19:08 ET |
+| **Dates Predicted** | 82 | 2026-06-23 19:08 ET |
 | **Season Start** | March 25, 2026 | — |
 <!-- BTS:RUNNING_RECORD_END -->
 
@@ -674,7 +674,8 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:DAILY_LOG_START -->
 | Date | Top Pick | Team | Confidence | Top-1 | Top-2 | Top-5 | Top-10 | Top-1 Streak |
 |------|----------|------|------------|-------|-------|-------|--------|--------------|
-| 2026-06-22 | Pete Crow-Armstrong | Chicago Cubs | 76.9% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-06-23 | Taylor Ward | Baltimore Orioles | 80.0% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-06-22 | Pete Crow-Armstrong | Chicago Cubs | 76.9% | ⏳ | ✅ | ✅ | ✅ | — |
 | 2026-06-21 | Spencer Horwitz | Pittsburgh Pirates | 76.2% | ✅ | ✅ | ✅ | ✅ | 3 |
 | 2026-06-20 | Byron Buxton | Minnesota Twins | 76.0% | ✅ | ✅ | ✅ | ✅ | 2 |
 | 2026-06-19 | Shohei Ohtani | Los Angeles Dodgers | 75.8% | ⏳ | ✅ | ✅ | ✅ | — |
@@ -703,7 +704,6 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 | 2026-05-27 | Junior Caminero | Tampa Bay Rays | 76.5% | ❌ | ✅ | ✅ | ✅ | 0 |
 | 2026-05-26 | Aaron Judge | New York Yankees | 76.2% | ✅ | ✅ | ✅ | ✅ | 2 |
 | 2026-05-25 | Shea Langeliers | Athletics | 76.1% | ✅ | ✅ | ✅ | ✅ | 1 |
-| 2026-05-24 | Luis Arraez | San Francisco Giants | 74.7% | ❌ | ❌ | ✅ | ✅ | 0 |
 <!-- BTS:DAILY_LOG_END -->
 
 ### How Results Are Logged

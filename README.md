@@ -659,13 +659,13 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:RUNNING_RECORD_START -->
 | Metric | Value | Updated |
 |--------|-------|---------|
-| **Top-1 Hit Rate** | 70.2% | 2026-06-25 19:03 ET |
-| **Top-2 Hit Rate** | 92.9% | 2026-06-25 19:03 ET |
-| **Top-5 Hit Rate** | 100.0% | 2026-06-25 19:03 ET |
-| **Top-10 Hit Rate** | 100.0% | 2026-06-25 19:03 ET |
-| **Current Streak (Top-1)** | 1 | 2026-06-25 19:03 ET |
-| **Longest Streak (Top-1)** | 9 | 2026-06-25 19:03 ET |
-| **Dates Predicted** | 84 | 2026-06-25 19:03 ET |
+| **Top-1 Hit Rate** | 69.4% | 2026-06-26 18:50 ET |
+| **Top-2 Hit Rate** | 92.9% | 2026-06-26 18:50 ET |
+| **Top-5 Hit Rate** | 100.0% | 2026-06-26 18:50 ET |
+| **Top-10 Hit Rate** | 100.0% | 2026-06-26 18:50 ET |
+| **Current Streak (Top-1)** | 0 | 2026-06-26 18:50 ET |
+| **Longest Streak (Top-1)** | 9 | 2026-06-26 18:50 ET |
+| **Dates Predicted** | 85 | 2026-06-26 18:50 ET |
 | **Season Start** | March 25, 2026 | — |
 <!-- BTS:RUNNING_RECORD_END -->
 
@@ -674,7 +674,8 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:DAILY_LOG_START -->
 | Date | Top Pick | Team | Confidence | Top-1 | Top-2 | Top-5 | Top-10 | Top-1 Streak |
 |------|----------|------|------------|-------|-------|-------|--------|--------------|
-| 2026-06-25 | Ben Rice | New York Yankees | 72.1% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-06-26 | Luis Arraez | San Francisco Giants | 71.6% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-06-25 | Ben Rice | New York Yankees | 72.1% | ❌ | ✅ | ✅ | ✅ | 0 |
 | 2026-06-24 | Ceddanne Rafaela | Boston Red Sox | 76.0% | ✅ | ✅ | ✅ | ✅ | 1 |
 | 2026-06-23 | Taylor Ward | Baltimore Orioles | 80.0% | ❌ | ✅ | ✅ | ✅ | 0 |
 | 2026-06-22 | Pete Crow-Armstrong | Chicago Cubs | 76.9% | ⏳ | ✅ | ✅ | ✅ | — |
@@ -703,7 +704,6 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 | 2026-05-30 | Luis Arraez | San Francisco Giants | 79.1% | ❌ | ✅ | ✅ | ✅ | 0 |
 | 2026-05-29 | Matt Olson | Atlanta Braves | 74.9% | ✅ | ✅ | ✅ | ✅ | 2 |
 | 2026-05-28 | Sam Antonacci | Chicago White Sox | 75.3% | ✅ | ✅ | ✅ | ✅ | 1 |
-| 2026-05-27 | Junior Caminero | Tampa Bay Rays | 76.5% | ❌ | ✅ | ✅ | ✅ | 0 |
 <!-- BTS:DAILY_LOG_END -->
 
 ### How Results Are Logged

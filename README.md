@@ -659,13 +659,13 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:RUNNING_RECORD_START -->
 | Metric | Value | Updated |
 |--------|-------|---------|
-| **Top-1 Hit Rate** | 69.3% | 2026-06-29 19:03 ET |
-| **Top-2 Hit Rate** | 93.2% | 2026-06-29 19:03 ET |
-| **Top-5 Hit Rate** | 100.0% | 2026-06-29 19:03 ET |
-| **Top-10 Hit Rate** | 100.0% | 2026-06-29 19:03 ET |
-| **Current Streak (Top-1)** | 1 | 2026-06-29 19:03 ET |
-| **Longest Streak (Top-1)** | 9 | 2026-06-29 19:03 ET |
-| **Dates Predicted** | 88 | 2026-06-29 19:03 ET |
+| **Top-1 Hit Rate** | 69.7% | 2026-06-30 18:54 ET |
+| **Top-2 Hit Rate** | 93.3% | 2026-06-30 18:54 ET |
+| **Top-5 Hit Rate** | 100.0% | 2026-06-30 18:54 ET |
+| **Top-10 Hit Rate** | 100.0% | 2026-06-30 18:54 ET |
+| **Current Streak (Top-1)** | 2 | 2026-06-30 18:54 ET |
+| **Longest Streak (Top-1)** | 9 | 2026-06-30 18:54 ET |
+| **Dates Predicted** | 89 | 2026-06-30 18:54 ET |
 | **Season Start** | March 25, 2026 | — |
 <!-- BTS:RUNNING_RECORD_END -->
 
@@ -674,7 +674,8 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:DAILY_LOG_START -->
 | Date | Top Pick | Team | Confidence | Top-1 | Top-2 | Top-5 | Top-10 | Top-1 Streak |
 |------|----------|------|------------|-------|-------|-------|--------|--------------|
-| 2026-06-29 | Wilyer Abreu | Boston Red Sox | 74.5% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-06-30 | Otto Lopez | Miami Marlins | 75.5% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-06-29 | Otto Lopez | Miami Marlins | 78.5% | ✅ | ✅ | ✅ | ✅ | 2 |
 | 2026-06-28 | Shea Langeliers | Athletics | 75.1% | ✅ | ✅ | ✅ | ✅ | 1 |
 | 2026-06-27 | Byron Buxton | Minnesota Twins | 75.6% | ❌ | ✅ | ✅ | ✅ | 0 |
 | 2026-06-26 | Luis Arraez | San Francisco Giants | 71.6% | ✅ | ✅ | ✅ | ✅ | 1 |
@@ -703,7 +704,6 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 | 2026-06-03 | Luis Arraez | San Francisco Giants | 76.7% | ✅ | ✅ | ✅ | ✅ | 4 |
 | 2026-06-02 | Nico Hoerner | Chicago Cubs | 75.4% | ✅ | ✅ | ✅ | ✅ | 3 |
 | 2026-06-01 | JJ Bleday | Cincinnati Reds | 74.9% | ✅ | ✅ | ✅ | ✅ | 2 |
-| 2026-05-31 | Luis Arraez | San Francisco Giants | 78.7% | ✅ | ✅ | ✅ | ✅ | 1 |
 <!-- BTS:DAILY_LOG_END -->
 
 ### How Results Are Logged

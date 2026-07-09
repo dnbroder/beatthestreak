@@ -659,13 +659,13 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:RUNNING_RECORD_START -->
 | Metric | Value | Updated |
 |--------|-------|---------|
-| **Top-1 Hit Rate** | 70.1% | 2026-07-08 18:15 ET |
-| **Top-2 Hit Rate** | 93.8% | 2026-07-08 18:15 ET |
-| **Top-5 Hit Rate** | 100.0% | 2026-07-08 18:15 ET |
-| **Top-10 Hit Rate** | 100.0% | 2026-07-08 18:15 ET |
-| **Current Streak (Top-1)** | 0 | 2026-07-08 18:15 ET |
-| **Longest Streak (Top-1)** | 9 | 2026-07-08 18:15 ET |
-| **Dates Predicted** | 97 | 2026-07-08 18:15 ET |
+| **Top-1 Hit Rate** | 70.4% | 2026-07-09 18:48 ET |
+| **Top-2 Hit Rate** | 93.9% | 2026-07-09 18:48 ET |
+| **Top-5 Hit Rate** | 100.0% | 2026-07-09 18:48 ET |
+| **Top-10 Hit Rate** | 100.0% | 2026-07-09 18:48 ET |
+| **Current Streak (Top-1)** | 1 | 2026-07-09 18:48 ET |
+| **Longest Streak (Top-1)** | 9 | 2026-07-09 18:48 ET |
+| **Dates Predicted** | 98 | 2026-07-09 18:48 ET |
 | **Season Start** | March 25, 2026 | — |
 <!-- BTS:RUNNING_RECORD_END -->
 
@@ -674,7 +674,8 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:DAILY_LOG_START -->
 | Date | Top Pick | Team | Confidence | Top-1 | Top-2 | Top-5 | Top-10 | Top-1 Streak |
 |------|----------|------|------------|-------|-------|-------|--------|--------------|
-| 2026-07-08 | Drake Baldwin | Atlanta Braves | 70.9% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-07-09 | Trea Turner | Philadelphia Phillies | 73.8% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-07-08 | Drake Baldwin | Atlanta Braves | 70.9% | ✅ | ✅ | ✅ | ✅ | 1 |
 | 2026-07-07 | Jackson Chourio | Milwaukee Brewers | 76.7% | ❌ | ✅ | ✅ | ✅ | 0 |
 | 2026-07-06 | Yordan Alvarez | Houston Astros | 73.3% | ✅ | ✅ | ✅ | ✅ | 1 |
 | 2026-07-05 | Luis Arraez | San Francisco Giants | 79.5% | ❌ | ✅ | ✅ | ✅ | 0 |
@@ -703,7 +704,6 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 | 2026-06-12 | Wilyer Abreu | Boston Red Sox | 74.1% | ✅ | ✅ | ✅ | ✅ | 4 |
 | 2026-06-11 | Alex Bregman | Chicago Cubs | 76.8% | ✅ | ✅ | ✅ | ✅ | 3 |
 | 2026-06-10 | Shea Langeliers | Athletics | 75.0% | ✅ | ✅ | ✅ | ✅ | 2 |
-| 2026-06-09 | Julio Rodríguez | Seattle Mariners | 75.3% | ✅ | ✅ | ✅ | ✅ | 1 |
 <!-- BTS:DAILY_LOG_END -->
 
 ### How Results Are Logged

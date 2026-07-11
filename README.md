@@ -659,13 +659,13 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:RUNNING_RECORD_START -->
 | Metric | Value | Updated |
 |--------|-------|---------|
-| **Top-1 Hit Rate** | 69.7% | 2026-07-10 18:21 ET |
-| **Top-2 Hit Rate** | 92.9% | 2026-07-10 18:21 ET |
-| **Top-5 Hit Rate** | 100.0% | 2026-07-10 18:21 ET |
-| **Top-10 Hit Rate** | 100.0% | 2026-07-10 18:21 ET |
-| **Current Streak (Top-1)** | 0 | 2026-07-10 18:21 ET |
-| **Longest Streak (Top-1)** | 9 | 2026-07-10 18:21 ET |
-| **Dates Predicted** | 99 | 2026-07-10 18:21 ET |
+| **Top-1 Hit Rate** | 69.0% | 2026-07-11 17:53 ET |
+| **Top-2 Hit Rate** | 93.0% | 2026-07-11 17:53 ET |
+| **Top-5 Hit Rate** | 100.0% | 2026-07-11 17:53 ET |
+| **Top-10 Hit Rate** | 100.0% | 2026-07-11 17:53 ET |
+| **Current Streak (Top-1)** | 0 | 2026-07-11 17:53 ET |
+| **Longest Streak (Top-1)** | 9 | 2026-07-11 17:53 ET |
+| **Dates Predicted** | 100 | 2026-07-11 17:53 ET |
 | **Season Start** | March 25, 2026 | — |
 <!-- BTS:RUNNING_RECORD_END -->
 
@@ -674,7 +674,8 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:DAILY_LOG_START -->
 | Date | Top Pick | Team | Confidence | Top-1 | Top-2 | Top-5 | Top-10 | Top-1 Streak |
 |------|----------|------|------------|-------|-------|-------|--------|--------------|
-| 2026-07-10 | Pete Crow-Armstrong | Chicago Cubs | 80.6% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-07-11 | Brandon Lowe | Pittsburgh Pirates | 72.6% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-07-10 | Pete Crow-Armstrong | Chicago Cubs | 80.6% | ❌ | ✅ | ✅ | ✅ | 0 |
 | 2026-07-09 | Trea Turner | Philadelphia Phillies | 73.8% | ❌ | ❌ | ✅ | ✅ | 0 |
 | 2026-07-08 | Drake Baldwin | Atlanta Braves | 70.9% | ✅ | ✅ | ✅ | ✅ | 1 |
 | 2026-07-07 | Jackson Chourio | Milwaukee Brewers | 76.7% | ❌ | ✅ | ✅ | ✅ | 0 |
@@ -703,7 +704,6 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 | 2026-06-14 | Junior Caminero | Tampa Bay Rays | 73.9% | ✅ | ✅ | ✅ | ✅ | 6 |
 | 2026-06-13 | Jacob Wilson | Athletics | 80.2% | ✅ | ✅ | ✅ | ✅ | 5 |
 | 2026-06-12 | Wilyer Abreu | Boston Red Sox | 74.1% | ✅ | ✅ | ✅ | ✅ | 4 |
-| 2026-06-11 | Alex Bregman | Chicago Cubs | 76.8% | ✅ | ✅ | ✅ | ✅ | 3 |
 <!-- BTS:DAILY_LOG_END -->
 
 ### How Results Are Logged

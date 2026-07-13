@@ -659,13 +659,13 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:RUNNING_RECORD_START -->
 | Metric | Value | Updated |
 |--------|-------|---------|
-| **Top-1 Hit Rate** | 69.3% | 2026-07-12 17:57 ET |
-| **Top-2 Hit Rate** | 93.1% | 2026-07-12 17:57 ET |
-| **Top-5 Hit Rate** | 100.0% | 2026-07-12 17:57 ET |
-| **Top-10 Hit Rate** | 100.0% | 2026-07-12 17:57 ET |
-| **Current Streak (Top-1)** | 1 | 2026-07-12 17:57 ET |
-| **Longest Streak (Top-1)** | 9 | 2026-07-12 17:57 ET |
-| **Dates Predicted** | 101 | 2026-07-12 17:57 ET |
+| **Top-1 Hit Rate** | 69.6% | 2026-07-13 18:42 ET |
+| **Top-2 Hit Rate** | 93.1% | 2026-07-13 18:42 ET |
+| **Top-5 Hit Rate** | 100.0% | 2026-07-13 18:42 ET |
+| **Top-10 Hit Rate** | 100.0% | 2026-07-13 18:42 ET |
+| **Current Streak (Top-1)** | 2 | 2026-07-13 18:42 ET |
+| **Longest Streak (Top-1)** | 9 | 2026-07-13 18:42 ET |
+| **Dates Predicted** | 102 | 2026-07-13 18:42 ET |
 | **Season Start** | March 25, 2026 | — |
 <!-- BTS:RUNNING_RECORD_END -->
 
@@ -674,7 +674,7 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:DAILY_LOG_START -->
 | Date | Top Pick | Team | Confidence | Top-1 | Top-2 | Top-5 | Top-10 | Top-1 Streak |
 |------|----------|------|------------|-------|-------|-------|--------|--------------|
-| 2026-07-12 | Wyatt Langford | Texas Rangers | 80.6% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-07-12 | Wyatt Langford | Texas Rangers | 79.8% | ✅ | ✅ | ✅ | ✅ | 2 |
 | 2026-07-11 | Brandon Lowe | Pittsburgh Pirates | 72.7% | ✅ | ✅ | ✅ | ✅ | 1 |
 | 2026-07-10 | Pete Crow-Armstrong | Chicago Cubs | 80.6% | ❌ | ✅ | ✅ | ✅ | 0 |
 | 2026-07-09 | Trea Turner | Philadelphia Phillies | 73.8% | ❌ | ❌ | ✅ | ✅ | 0 |

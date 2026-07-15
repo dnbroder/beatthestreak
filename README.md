@@ -659,13 +659,13 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:RUNNING_RECORD_START -->
 | Metric | Value | Updated |
 |--------|-------|---------|
-| **Top-1 Hit Rate** | 69.6% | 2026-07-14 18:00 ET |
-| **Top-2 Hit Rate** | 93.1% | 2026-07-14 18:00 ET |
-| **Top-5 Hit Rate** | 100.0% | 2026-07-14 18:00 ET |
-| **Top-10 Hit Rate** | 100.0% | 2026-07-14 18:00 ET |
-| **Current Streak (Top-1)** | 2 | 2026-07-14 18:00 ET |
-| **Longest Streak (Top-1)** | 9 | 2026-07-14 18:00 ET |
-| **Dates Predicted** | 102 | 2026-07-14 18:00 ET |
+| **Top-1 Hit Rate** | 69.6% | 2026-07-15 18:05 ET |
+| **Top-2 Hit Rate** | 93.1% | 2026-07-15 18:05 ET |
+| **Top-5 Hit Rate** | 100.0% | 2026-07-15 18:05 ET |
+| **Top-10 Hit Rate** | 100.0% | 2026-07-15 18:05 ET |
+| **Current Streak (Top-1)** | 2 | 2026-07-15 18:05 ET |
+| **Longest Streak (Top-1)** | 9 | 2026-07-15 18:05 ET |
+| **Dates Predicted** | 102 | 2026-07-15 18:05 ET |
 | **Season Start** | March 25, 2026 | — |
 <!-- BTS:RUNNING_RECORD_END -->
 

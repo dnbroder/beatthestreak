@@ -659,13 +659,13 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:RUNNING_RECORD_START -->
 | Metric | Value | Updated |
 |--------|-------|---------|
-| **Top-1 Hit Rate** | 69.5% | 2026-07-19 17:56 ET |
-| **Top-2 Hit Rate** | 93.3% | 2026-07-19 17:56 ET |
-| **Top-5 Hit Rate** | 100.0% | 2026-07-19 17:56 ET |
-| **Top-10 Hit Rate** | 100.0% | 2026-07-19 17:56 ET |
-| **Current Streak (Top-1)** | 0 | 2026-07-19 17:56 ET |
-| **Longest Streak (Top-1)** | 9 | 2026-07-19 17:56 ET |
-| **Dates Predicted** | 105 | 2026-07-19 17:56 ET |
+| **Top-1 Hit Rate** | 69.8% | 2026-07-20 18:51 ET |
+| **Top-2 Hit Rate** | 93.4% | 2026-07-20 18:51 ET |
+| **Top-5 Hit Rate** | 100.0% | 2026-07-20 18:51 ET |
+| **Top-10 Hit Rate** | 100.0% | 2026-07-20 18:51 ET |
+| **Current Streak (Top-1)** | 1 | 2026-07-20 18:51 ET |
+| **Longest Streak (Top-1)** | 9 | 2026-07-20 18:51 ET |
+| **Dates Predicted** | 106 | 2026-07-20 18:51 ET |
 | **Season Start** | March 25, 2026 | — |
 <!-- BTS:RUNNING_RECORD_END -->
 
@@ -674,7 +674,8 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:DAILY_LOG_START -->
 | Date | Top Pick | Team | Confidence | Top-1 | Top-2 | Top-5 | Top-10 | Top-1 Streak |
 |------|----------|------|------------|-------|-------|-------|--------|--------------|
-| 2026-07-19 | Keibert Ruiz | Washington Nationals | 72.2% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-07-20 | Luis Arraez | San Francisco Giants | 74.2% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-07-19 | Elly De La Cruz | Cincinnati Reds | 72.7% | ✅ | ✅ | ✅ | ✅ | 1 |
 | 2026-07-18 | Sal Stewart | Cincinnati Reds | 74.8% | ❌ | ✅ | ✅ | ✅ | 0 |
 | 2026-07-17 | JJ Wetherholt | St. Louis Cardinals | 70.8% | ✅ | ✅ | ✅ | ✅ | 4 |
 | 2026-07-16 | Juan Soto | New York Mets | 67.4% | ✅ | ✅ | ✅ | ✅ | 3 |
@@ -703,7 +704,6 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 | 2026-06-20 | Byron Buxton | Minnesota Twins | 76.0% | ✅ | ✅ | ✅ | ✅ | 2 |
 | 2026-06-19 | Shohei Ohtani | Los Angeles Dodgers | 75.8% | ⏳ | ✅ | ✅ | ✅ | — |
 | 2026-06-18 | Bobby Witt Jr. | Kansas City Royals | 73.4% | ✅ | ✅ | ✅ | ✅ | 1 |
-| 2026-06-17 | Otto Lopez | Miami Marlins | 78.3% | ❌ | ✅ | ✅ | ✅ | 0 |
 <!-- BTS:DAILY_LOG_END -->
 
 ### How Results Are Logged

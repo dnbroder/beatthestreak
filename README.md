@@ -659,13 +659,13 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:RUNNING_RECORD_START -->
 | Metric | Value | Updated |
 |--------|-------|---------|
-| **Top-1 Hit Rate** | 69.4% | 2026-07-25 17:56 ET |
-| **Top-2 Hit Rate** | 92.8% | 2026-07-25 17:56 ET |
-| **Top-5 Hit Rate** | 100.0% | 2026-07-25 17:56 ET |
-| **Top-10 Hit Rate** | 100.0% | 2026-07-25 17:56 ET |
-| **Current Streak (Top-1)** | 2 | 2026-07-25 17:56 ET |
-| **Longest Streak (Top-1)** | 9 | 2026-07-25 17:56 ET |
-| **Dates Predicted** | 111 | 2026-07-25 17:56 ET |
+| **Top-1 Hit Rate** | 69.6% | 2026-07-26 17:59 ET |
+| **Top-2 Hit Rate** | 92.9% | 2026-07-26 17:59 ET |
+| **Top-5 Hit Rate** | 100.0% | 2026-07-26 17:59 ET |
+| **Top-10 Hit Rate** | 100.0% | 2026-07-26 17:59 ET |
+| **Current Streak (Top-1)** | 3 | 2026-07-26 17:59 ET |
+| **Longest Streak (Top-1)** | 9 | 2026-07-26 17:59 ET |
+| **Dates Predicted** | 112 | 2026-07-26 17:59 ET |
 | **Season Start** | March 25, 2026 | — |
 <!-- BTS:RUNNING_RECORD_END -->
 
@@ -674,7 +674,8 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:DAILY_LOG_START -->
 | Date | Top Pick | Team | Confidence | Top-1 | Top-2 | Top-5 | Top-10 | Top-1 Streak |
 |------|----------|------|------------|-------|-------|-------|--------|--------------|
-| 2026-07-25 | Ryan Jeffers | Minnesota Twins | 75.4% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-07-26 | Jackson Chourio | Milwaukee Brewers | 72.8% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-07-25 | Luis Arraez | San Francisco Giants | 77.5% | ✅ | ✅ | ✅ | ✅ | 3 |
 | 2026-07-24 | Luis Arraez | San Francisco Giants | 76.1% | ✅ | ✅ | ✅ | ✅ | 2 |
 | 2026-07-23 | Mauricio Dubón | Atlanta Braves | 69.0% | ✅ | ✅ | ✅ | ✅ | 1 |
 | 2026-07-22 | Luis Arraez | San Francisco Giants | 73.2% | ❌ | ❌ | ✅ | ✅ | 0 |
@@ -703,7 +704,6 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 | 2026-06-26 | Luis Arraez | San Francisco Giants | 71.6% | ✅ | ✅ | ✅ | ✅ | 1 |
 | 2026-06-25 | Ben Rice | New York Yankees | 72.1% | ❌ | ✅ | ✅ | ✅ | 0 |
 | 2026-06-24 | Ceddanne Rafaela | Boston Red Sox | 76.0% | ✅ | ✅ | ✅ | ✅ | 1 |
-| 2026-06-23 | Taylor Ward | Baltimore Orioles | 80.0% | ❌ | ✅ | ✅ | ✅ | 0 |
 <!-- BTS:DAILY_LOG_END -->
 
 ### How Results Are Logged

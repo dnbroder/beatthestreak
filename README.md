@@ -659,13 +659,13 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:RUNNING_RECORD_START -->
 | Metric | Value | Updated |
 |--------|-------|---------|
-| **Top-1 Hit Rate** | 69.9% | 2026-07-27 18:22 ET |
-| **Top-2 Hit Rate** | 92.9% | 2026-07-27 18:22 ET |
-| **Top-5 Hit Rate** | 100.0% | 2026-07-27 18:22 ET |
-| **Top-10 Hit Rate** | 100.0% | 2026-07-27 18:22 ET |
-| **Current Streak (Top-1)** | 4 | 2026-07-27 18:22 ET |
-| **Longest Streak (Top-1)** | 9 | 2026-07-27 18:22 ET |
-| **Dates Predicted** | 113 | 2026-07-27 18:22 ET |
+| **Top-1 Hit Rate** | 69.3% | 2026-07-28 18:13 ET |
+| **Top-2 Hit Rate** | 93.0% | 2026-07-28 18:13 ET |
+| **Top-5 Hit Rate** | 100.0% | 2026-07-28 18:13 ET |
+| **Top-10 Hit Rate** | 100.0% | 2026-07-28 18:13 ET |
+| **Current Streak (Top-1)** | 0 | 2026-07-28 18:13 ET |
+| **Longest Streak (Top-1)** | 9 | 2026-07-28 18:13 ET |
+| **Dates Predicted** | 114 | 2026-07-28 18:13 ET |
 | **Season Start** | March 25, 2026 | — |
 <!-- BTS:RUNNING_RECORD_END -->
 
@@ -674,7 +674,8 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:DAILY_LOG_START -->
 | Date | Top Pick | Team | Confidence | Top-1 | Top-2 | Top-5 | Top-10 | Top-1 Streak |
 |------|----------|------|------------|-------|-------|-------|--------|--------------|
-| 2026-07-27 | CJ Abrams | Washington Nationals | 77.0% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-07-28 | Shohei Ohtani | Los Angeles Dodgers | 71.0% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-07-27 | CJ Abrams | Washington Nationals | 77.0% | ❌ | ✅ | ✅ | ✅ | 0 |
 | 2026-07-26 | Jackson Chourio | Milwaukee Brewers | 73.2% | ✅ | ✅ | ✅ | ✅ | 4 |
 | 2026-07-25 | Luis Arraez | San Francisco Giants | 77.5% | ✅ | ✅ | ✅ | ✅ | 3 |
 | 2026-07-24 | Luis Arraez | San Francisco Giants | 76.1% | ✅ | ✅ | ✅ | ✅ | 2 |
@@ -703,7 +704,6 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 | 2026-06-28 | Shea Langeliers | Athletics | 75.1% | ✅ | ✅ | ✅ | ✅ | 1 |
 | 2026-06-27 | Byron Buxton | Minnesota Twins | 75.6% | ❌ | ✅ | ✅ | ✅ | 0 |
 | 2026-06-26 | Luis Arraez | San Francisco Giants | 71.6% | ✅ | ✅ | ✅ | ✅ | 1 |
-| 2026-06-25 | Ben Rice | New York Yankees | 72.1% | ❌ | ✅ | ✅ | ✅ | 0 |
 <!-- BTS:DAILY_LOG_END -->
 
 ### How Results Are Logged

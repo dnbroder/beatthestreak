@@ -659,13 +659,13 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:RUNNING_RECORD_START -->
 | Metric | Value | Updated |
 |--------|-------|---------|
-| **Top-1 Hit Rate** | 69.2% | 2026-07-31 18:18 ET |
-| **Top-2 Hit Rate** | 93.2% | 2026-07-31 18:18 ET |
-| **Top-5 Hit Rate** | 100.0% | 2026-07-31 18:18 ET |
-| **Top-10 Hit Rate** | 100.0% | 2026-07-31 18:18 ET |
-| **Current Streak (Top-1)** | 0 | 2026-07-31 18:18 ET |
-| **Longest Streak (Top-1)** | 9 | 2026-07-31 18:18 ET |
-| **Dates Predicted** | 117 | 2026-07-31 18:18 ET |
+| **Top-1 Hit Rate** | 68.6% | 2026-08-01 17:58 ET |
+| **Top-2 Hit Rate** | 92.4% | 2026-08-01 17:58 ET |
+| **Top-5 Hit Rate** | 100.0% | 2026-08-01 17:58 ET |
+| **Top-10 Hit Rate** | 100.0% | 2026-08-01 17:58 ET |
+| **Current Streak (Top-1)** | 0 | 2026-08-01 17:58 ET |
+| **Longest Streak (Top-1)** | 9 | 2026-08-01 17:58 ET |
+| **Dates Predicted** | 118 | 2026-08-01 17:58 ET |
 | **Season Start** | March 25, 2026 | — |
 <!-- BTS:RUNNING_RECORD_END -->
 
@@ -674,7 +674,8 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:DAILY_LOG_START -->
 | Date | Top Pick | Team | Confidence | Top-1 | Top-2 | Top-5 | Top-10 | Top-1 Streak |
 |------|----------|------|------------|-------|-------|-------|--------|--------------|
-| 2026-07-31 | Jackson Chourio | Milwaukee Brewers | 76.2% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-08-01 | Drake Baldwin | Atlanta Braves | 75.2% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-07-31 | José Ramírez | Cleveland Guardians | 72.8% | ❌ | ❌ | ✅ | ✅ | 0 |
 | 2026-07-30 | Matt Olson | Atlanta Braves | 71.6% | ❌ | ✅ | ✅ | ✅ | 0 |
 | 2026-07-29 | Luis Arraez | San Francisco Giants | 74.0% | ✅ | ✅ | ✅ | ✅ | 2 |
 | 2026-07-28 | Shohei Ohtani | Los Angeles Dodgers | 71.0% | ✅ | ✅ | ✅ | ✅ | 1 |
@@ -703,7 +704,6 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 | 2026-07-02 | Otto Lopez | Miami Marlins | 77.5% | ✅ | ✅ | ✅ | ✅ | 5 |
 | 2026-07-01 | Otto Lopez | Miami Marlins | 79.2% | ✅ | ✅ | ✅ | ✅ | 4 |
 | 2026-06-30 | Luis Arraez | San Francisco Giants | 76.8% | ✅ | ✅ | ✅ | ✅ | 3 |
-| 2026-06-29 | Otto Lopez | Miami Marlins | 78.5% | ✅ | ✅ | ✅ | ✅ | 2 |
 <!-- BTS:DAILY_LOG_END -->
 
 ### How Results Are Logged

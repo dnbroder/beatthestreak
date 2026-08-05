@@ -659,13 +659,13 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:RUNNING_RECORD_START -->
 | Metric | Value | Updated |
 |--------|-------|---------|
-| **Top-1 Hit Rate** | 69.4% | 2026-08-04 18:25 ET |
-| **Top-2 Hit Rate** | 92.6% | 2026-08-04 18:25 ET |
-| **Top-5 Hit Rate** | 100.0% | 2026-08-04 18:25 ET |
-| **Top-10 Hit Rate** | 100.0% | 2026-08-04 18:25 ET |
-| **Current Streak (Top-1)** | 3 | 2026-08-04 18:25 ET |
-| **Longest Streak (Top-1)** | 9 | 2026-08-04 18:25 ET |
-| **Dates Predicted** | 121 | 2026-08-04 18:25 ET |
+| **Top-1 Hit Rate** | 69.7% | 2026-08-05 18:19 ET |
+| **Top-2 Hit Rate** | 92.6% | 2026-08-05 18:19 ET |
+| **Top-5 Hit Rate** | 100.0% | 2026-08-05 18:19 ET |
+| **Top-10 Hit Rate** | 100.0% | 2026-08-05 18:19 ET |
+| **Current Streak (Top-1)** | 4 | 2026-08-05 18:19 ET |
+| **Longest Streak (Top-1)** | 9 | 2026-08-05 18:19 ET |
+| **Dates Predicted** | 122 | 2026-08-05 18:19 ET |
 | **Season Start** | March 25, 2026 | — |
 <!-- BTS:RUNNING_RECORD_END -->
 
@@ -674,7 +674,8 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:DAILY_LOG_START -->
 | Date | Top Pick | Team | Confidence | Top-1 | Top-2 | Top-5 | Top-10 | Top-1 Streak |
 |------|----------|------|------------|-------|-------|-------|--------|--------------|
-| 2026-08-04 | Ryan Jeffers | Minnesota Twins | 74.1% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-08-05 | Luis Arraez | Philadelphia Phillies | 75.4% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-08-04 | Trea Turner | Philadelphia Phillies | 75.9% | ✅ | ✅ | ✅ | ✅ | 4 |
 | 2026-08-03 | Jonathan Aranda | Tampa Bay Rays | 76.9% | ✅ | ✅ | ✅ | ✅ | 3 |
 | 2026-08-02 | Trea Turner | Philadelphia Phillies | 70.3% | ✅ | ✅ | ✅ | ✅ | 2 |
 | 2026-08-01 | Drake Baldwin | Atlanta Braves | 75.2% | ✅ | ✅ | ✅ | ✅ | 1 |
@@ -703,7 +704,6 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 | 2026-07-06 | Yordan Alvarez | Houston Astros | 73.3% | ✅ | ✅ | ✅ | ✅ | 1 |
 | 2026-07-05 | Luis Arraez | San Francisco Giants | 79.5% | ❌ | ✅ | ✅ | ✅ | 0 |
 | 2026-07-04 | Heliot Ramos | San Francisco Giants | 77.1% | ✅ | ✅ | ✅ | ✅ | 7 |
-| 2026-07-03 | Luis Arraez | San Francisco Giants | 74.3% | ✅ | ✅ | ✅ | ✅ | 6 |
 <!-- BTS:DAILY_LOG_END -->
 
 ### How Results Are Logged

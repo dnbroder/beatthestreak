@@ -659,13 +659,13 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:RUNNING_RECORD_START -->
 | Metric | Value | Updated |
 |--------|-------|---------|
-| **Top-1 Hit Rate** | 69.9% | 2026-08-07 11:20 ET |
-| **Top-2 Hit Rate** | 92.7% | 2026-08-07 11:20 ET |
-| **Top-5 Hit Rate** | 100.0% | 2026-08-07 11:20 ET |
-| **Top-10 Hit Rate** | 100.0% | 2026-08-07 11:20 ET |
-| **Current Streak (Top-1)** | 5 | 2026-08-07 11:20 ET |
-| **Longest Streak (Top-1)** | 9 | 2026-08-07 11:20 ET |
-| **Dates Predicted** | 123 | 2026-08-07 11:20 ET |
+| **Top-1 Hit Rate** | 70.2% | 2026-08-07 17:47 ET |
+| **Top-2 Hit Rate** | 92.7% | 2026-08-07 17:47 ET |
+| **Top-5 Hit Rate** | 100.0% | 2026-08-07 17:47 ET |
+| **Top-10 Hit Rate** | 100.0% | 2026-08-07 17:47 ET |
+| **Current Streak (Top-1)** | 6 | 2026-08-07 17:47 ET |
+| **Longest Streak (Top-1)** | 9 | 2026-08-07 17:47 ET |
+| **Dates Predicted** | 124 | 2026-08-07 17:47 ET |
 | **Season Start** | March 25, 2026 | — |
 <!-- BTS:RUNNING_RECORD_END -->
 
@@ -674,7 +674,8 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:DAILY_LOG_START -->
 | Date | Top Pick | Team | Confidence | Top-1 | Top-2 | Top-5 | Top-10 | Top-1 Streak |
 |------|----------|------|------------|-------|-------|-------|--------|--------------|
-| 2026-08-06 | Luis Arraez | Philadelphia Phillies | 75.4% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-08-07 | Kyle Stowers | Miami Marlins | 75.8% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-08-06 | Luis Arraez | Philadelphia Phillies | 75.4% | ✅ | ✅ | ✅ | ✅ | 6 |
 | 2026-08-05 | Luis Arraez | Philadelphia Phillies | 75.4% | ✅ | ✅ | ✅ | ✅ | 5 |
 | 2026-08-04 | Trea Turner | Philadelphia Phillies | 75.9% | ✅ | ✅ | ✅ | ✅ | 4 |
 | 2026-08-03 | Jonathan Aranda | Tampa Bay Rays | 76.9% | ✅ | ✅ | ✅ | ✅ | 3 |
@@ -703,7 +704,6 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 | 2026-07-08 | Drake Baldwin | Atlanta Braves | 70.9% | ✅ | ✅ | ✅ | ✅ | 1 |
 | 2026-07-07 | Jackson Chourio | Milwaukee Brewers | 76.7% | ❌ | ✅ | ✅ | ✅ | 0 |
 | 2026-07-06 | Yordan Alvarez | Houston Astros | 73.3% | ✅ | ✅ | ✅ | ✅ | 1 |
-| 2026-07-05 | Luis Arraez | San Francisco Giants | 79.5% | ❌ | ✅ | ✅ | ✅ | 0 |
 <!-- BTS:DAILY_LOG_END -->
 
 ### How Results Are Logged

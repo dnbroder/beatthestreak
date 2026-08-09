@@ -659,13 +659,13 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:RUNNING_RECORD_START -->
 | Metric | Value | Updated |
 |--------|-------|---------|
-| **Top-1 Hit Rate** | 70.4% | 2026-08-08 17:26 ET |
-| **Top-2 Hit Rate** | 92.8% | 2026-08-08 17:26 ET |
-| **Top-5 Hit Rate** | 100.0% | 2026-08-08 17:26 ET |
-| **Top-10 Hit Rate** | 100.0% | 2026-08-08 17:26 ET |
-| **Current Streak (Top-1)** | 7 | 2026-08-08 17:26 ET |
-| **Longest Streak (Top-1)** | 9 | 2026-08-08 17:26 ET |
-| **Dates Predicted** | 125 | 2026-08-08 17:26 ET |
+| **Top-1 Hit Rate** | 70.6% | 2026-08-09 17:29 ET |
+| **Top-2 Hit Rate** | 92.9% | 2026-08-09 17:29 ET |
+| **Top-5 Hit Rate** | 100.0% | 2026-08-09 17:29 ET |
+| **Top-10 Hit Rate** | 100.0% | 2026-08-09 17:29 ET |
+| **Current Streak (Top-1)** | 8 | 2026-08-09 17:29 ET |
+| **Longest Streak (Top-1)** | 9 | 2026-08-09 17:29 ET |
+| **Dates Predicted** | 126 | 2026-08-09 17:29 ET |
 | **Season Start** | March 25, 2026 | — |
 <!-- BTS:RUNNING_RECORD_END -->
 
@@ -674,7 +674,8 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:DAILY_LOG_START -->
 | Date | Top Pick | Team | Confidence | Top-1 | Top-2 | Top-5 | Top-10 | Top-1 Streak |
 |------|----------|------|------------|-------|-------|-------|--------|--------------|
-| 2026-08-08 | Luis Arraez | Philadelphia Phillies | 79.1% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-08-09 | Luis Arraez | Philadelphia Phillies | 77.8% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-08-08 | Luis Arraez | Philadelphia Phillies | 79.1% | ✅ | ✅ | ✅ | ✅ | 8 |
 | 2026-08-07 | Kyle Stowers | Miami Marlins | 75.8% | ✅ | ✅ | ✅ | ✅ | 7 |
 | 2026-08-06 | Luis Arraez | Philadelphia Phillies | 75.4% | ✅ | ✅ | ✅ | ✅ | 6 |
 | 2026-08-05 | Luis Arraez | Philadelphia Phillies | 75.4% | ✅ | ✅ | ✅ | ✅ | 5 |
@@ -703,7 +704,6 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 | 2026-07-10 | Pete Crow-Armstrong | Chicago Cubs | 80.6% | ❌ | ✅ | ✅ | ✅ | 0 |
 | 2026-07-09 | Trea Turner | Philadelphia Phillies | 73.8% | ❌ | ❌ | ✅ | ✅ | 0 |
 | 2026-07-08 | Drake Baldwin | Atlanta Braves | 70.9% | ✅ | ✅ | ✅ | ✅ | 1 |
-| 2026-07-07 | Jackson Chourio | Milwaukee Brewers | 76.7% | ❌ | ✅ | ✅ | ✅ | 0 |
 <!-- BTS:DAILY_LOG_END -->
 
 ### How Results Are Logged

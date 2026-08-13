@@ -659,13 +659,13 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:RUNNING_RECORD_START -->
 | Metric | Value | Updated |
 |--------|-------|---------|
-| **Top-1 Hit Rate** | 69.0% | 2026-08-12 17:55 ET |
-| **Top-2 Hit Rate** | 92.2% | 2026-08-12 17:55 ET |
-| **Top-5 Hit Rate** | 100.0% | 2026-08-12 17:55 ET |
-| **Top-10 Hit Rate** | 100.0% | 2026-08-12 17:55 ET |
-| **Current Streak (Top-1)** | 0 | 2026-08-12 17:55 ET |
-| **Longest Streak (Top-1)** | 9 | 2026-08-12 17:55 ET |
-| **Dates Predicted** | 129 | 2026-08-12 17:55 ET |
+| **Top-1 Hit Rate** | 68.5% | 2026-08-13 17:55 ET |
+| **Top-2 Hit Rate** | 92.3% | 2026-08-13 17:55 ET |
+| **Top-5 Hit Rate** | 100.0% | 2026-08-13 17:55 ET |
+| **Top-10 Hit Rate** | 100.0% | 2026-08-13 17:55 ET |
+| **Current Streak (Top-1)** | 0 | 2026-08-13 17:55 ET |
+| **Longest Streak (Top-1)** | 9 | 2026-08-13 17:55 ET |
+| **Dates Predicted** | 130 | 2026-08-13 17:55 ET |
 | **Season Start** | March 25, 2026 | — |
 <!-- BTS:RUNNING_RECORD_END -->
 
@@ -674,7 +674,8 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:DAILY_LOG_START -->
 | Date | Top Pick | Team | Confidence | Top-1 | Top-2 | Top-5 | Top-10 | Top-1 Streak |
 |------|----------|------|------------|-------|-------|-------|--------|--------------|
-| 2026-08-12 | Brandon Nimmo | Texas Rangers | 76.5% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-08-13 | Luis Arraez | Philadelphia Phillies | 73.5% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-08-12 | Brandon Nimmo | Texas Rangers | 76.5% | ❌ | ✅ | ✅ | ✅ | 0 |
 | 2026-08-11 | Jeremy Peña | Houston Astros | 75.2% | ❌ | ❌ | ✅ | ✅ | 0 |
 | 2026-08-10 | Luis Arraez | Philadelphia Phillies | 72.2% | ❌ | ✅ | ✅ | ✅ | 0 |
 | 2026-08-09 | Luis Arraez | Philadelphia Phillies | 77.1% | ❌ | ✅ | ✅ | ✅ | 0 |
@@ -703,7 +704,6 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 | 2026-07-17 | JJ Wetherholt | St. Louis Cardinals | 70.8% | ✅ | ✅ | ✅ | ✅ | 4 |
 | 2026-07-16 | Juan Soto | New York Mets | 67.4% | ✅ | ✅ | ✅ | ✅ | 3 |
 | 2026-07-12 | Wyatt Langford | Texas Rangers | 79.8% | ✅ | ✅ | ✅ | ✅ | 2 |
-| 2026-07-11 | Brandon Lowe | Pittsburgh Pirates | 72.7% | ✅ | ✅ | ✅ | ✅ | 1 |
 <!-- BTS:DAILY_LOG_END -->
 
 ### How Results Are Logged

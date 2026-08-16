@@ -659,13 +659,13 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:RUNNING_RECORD_START -->
 | Metric | Value | Updated |
 |--------|-------|---------|
-| **Top-1 Hit Rate** | 68.2% | 2026-08-15 17:18 ET |
-| **Top-2 Hit Rate** | 92.4% | 2026-08-15 17:18 ET |
-| **Top-5 Hit Rate** | 100.0% | 2026-08-15 17:18 ET |
-| **Top-10 Hit Rate** | 100.0% | 2026-08-15 17:18 ET |
-| **Current Streak (Top-1)** | 0 | 2026-08-15 17:18 ET |
-| **Longest Streak (Top-1)** | 9 | 2026-08-15 17:18 ET |
-| **Dates Predicted** | 132 | 2026-08-15 17:18 ET |
+| **Top-1 Hit Rate** | 68.4% | 2026-08-16 17:16 ET |
+| **Top-2 Hit Rate** | 92.5% | 2026-08-16 17:16 ET |
+| **Top-5 Hit Rate** | 100.0% | 2026-08-16 17:16 ET |
+| **Top-10 Hit Rate** | 100.0% | 2026-08-16 17:16 ET |
+| **Current Streak (Top-1)** | 1 | 2026-08-16 17:16 ET |
+| **Longest Streak (Top-1)** | 9 | 2026-08-16 17:16 ET |
+| **Dates Predicted** | 133 | 2026-08-16 17:16 ET |
 | **Season Start** | March 25, 2026 | — |
 <!-- BTS:RUNNING_RECORD_END -->
 
@@ -674,7 +674,8 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:DAILY_LOG_START -->
 | Date | Top Pick | Team | Confidence | Top-1 | Top-2 | Top-5 | Top-10 | Top-1 Streak |
 |------|----------|------|------------|-------|-------|-------|--------|--------------|
-| 2026-08-15 | Trea Turner | Philadelphia Phillies | 74.7% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-08-16 | Luis Arraez | Philadelphia Phillies | 74.5% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-08-15 | Trea Turner | Philadelphia Phillies | 74.7% | ✅ | ✅ | ✅ | ✅ | 1 |
 | 2026-08-14 | CJ Abrams | Washington Nationals | 74.1% | ❌ | ✅ | ✅ | ✅ | 0 |
 | 2026-08-13 | Luis Arraez | Philadelphia Phillies | 73.5% | ✅ | ✅ | ✅ | ✅ | 1 |
 | 2026-08-12 | Brandon Nimmo | Texas Rangers | 76.5% | ❌ | ✅ | ✅ | ✅ | 0 |
@@ -703,7 +704,6 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 | 2026-07-20 | Luis Arraez | San Francisco Giants | 74.2% | ❌ | ✅ | ✅ | ✅ | 0 |
 | 2026-07-19 | Elly De La Cruz | Cincinnati Reds | 72.7% | ✅ | ✅ | ✅ | ✅ | 1 |
 | 2026-07-18 | Sal Stewart | Cincinnati Reds | 74.8% | ❌ | ✅ | ✅ | ✅ | 0 |
-| 2026-07-17 | JJ Wetherholt | St. Louis Cardinals | 70.8% | ✅ | ✅ | ✅ | ✅ | 4 |
 <!-- BTS:DAILY_LOG_END -->
 
 ### How Results Are Logged

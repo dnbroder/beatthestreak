@@ -659,13 +659,13 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:RUNNING_RECORD_START -->
 | Metric | Value | Updated |
 |--------|-------|---------|
-| **Top-1 Hit Rate** | 68.8% | 2026-08-21 17:26 ET |
-| **Top-2 Hit Rate** | 92.8% | 2026-08-21 17:26 ET |
-| **Top-5 Hit Rate** | 100.0% | 2026-08-21 17:26 ET |
-| **Top-10 Hit Rate** | 100.0% | 2026-08-21 17:26 ET |
-| **Current Streak (Top-1)** | 2 | 2026-08-21 17:26 ET |
-| **Longest Streak (Top-1)** | 9 | 2026-08-21 17:26 ET |
-| **Dates Predicted** | 138 | 2026-08-21 17:26 ET |
+| **Top-1 Hit Rate** | 68.3% | 2026-08-22 17:17 ET |
+| **Top-2 Hit Rate** | 92.8% | 2026-08-22 17:17 ET |
+| **Top-5 Hit Rate** | 100.0% | 2026-08-22 17:17 ET |
+| **Top-10 Hit Rate** | 100.0% | 2026-08-22 17:17 ET |
+| **Current Streak (Top-1)** | 0 | 2026-08-22 17:17 ET |
+| **Longest Streak (Top-1)** | 9 | 2026-08-22 17:17 ET |
+| **Dates Predicted** | 139 | 2026-08-22 17:17 ET |
 | **Season Start** | March 25, 2026 | — |
 <!-- BTS:RUNNING_RECORD_END -->
 
@@ -674,7 +674,8 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:DAILY_LOG_START -->
 | Date | Top Pick | Team | Confidence | Top-1 | Top-2 | Top-5 | Top-10 | Top-1 Streak |
 |------|----------|------|------------|-------|-------|-------|--------|--------------|
-| 2026-08-21 | Trea Turner | Philadelphia Phillies | 72.2% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-08-22 | Chase DeLauter | Cleveland Guardians | 73.0% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-08-21 | Yandy Díaz | Tampa Bay Rays | 72.0% | ❌ | ✅ | ✅ | ✅ | 0 |
 | 2026-08-20 | Yordan Alvarez | Houston Astros | 73.9% | ✅ | ✅ | ✅ | ✅ | 2 |
 | 2026-08-19 | Andy Pages | Los Angeles Dodgers | 75.0% | ✅ | ✅ | ✅ | ✅ | 1 |
 | 2026-08-18 | Yordan Alvarez | Houston Astros | 78.4% | ❌ | ✅ | ✅ | ✅ | 0 |
@@ -703,7 +704,6 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 | 2026-07-26 | Jackson Chourio | Milwaukee Brewers | 73.2% | ✅ | ✅ | ✅ | ✅ | 4 |
 | 2026-07-25 | Luis Arraez | San Francisco Giants | 77.5% | ✅ | ✅ | ✅ | ✅ | 3 |
 | 2026-07-24 | Luis Arraez | San Francisco Giants | 76.1% | ✅ | ✅ | ✅ | ✅ | 2 |
-| 2026-07-23 | Mauricio Dubón | Atlanta Braves | 69.0% | ✅ | ✅ | ✅ | ✅ | 1 |
 <!-- BTS:DAILY_LOG_END -->
 
 ### How Results Are Logged

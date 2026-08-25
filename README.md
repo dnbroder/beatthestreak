@@ -659,13 +659,13 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:RUNNING_RECORD_START -->
 | Metric | Value | Updated |
 |--------|-------|---------|
-| **Top-1 Hit Rate** | 67.4% | 2026-08-24 17:28 ET |
-| **Top-2 Hit Rate** | 92.9% | 2026-08-24 17:28 ET |
-| **Top-5 Hit Rate** | 100.0% | 2026-08-24 17:28 ET |
-| **Top-10 Hit Rate** | 100.0% | 2026-08-24 17:28 ET |
-| **Current Streak (Top-1)** | 0 | 2026-08-24 17:28 ET |
-| **Longest Streak (Top-1)** | 9 | 2026-08-24 17:28 ET |
-| **Dates Predicted** | 141 | 2026-08-24 17:28 ET |
+| **Top-1 Hit Rate** | 67.6% | 2026-08-25 17:29 ET |
+| **Top-2 Hit Rate** | 93.0% | 2026-08-25 17:29 ET |
+| **Top-5 Hit Rate** | 100.0% | 2026-08-25 17:29 ET |
+| **Top-10 Hit Rate** | 100.0% | 2026-08-25 17:29 ET |
+| **Current Streak (Top-1)** | 1 | 2026-08-25 17:29 ET |
+| **Longest Streak (Top-1)** | 9 | 2026-08-25 17:29 ET |
+| **Dates Predicted** | 142 | 2026-08-25 17:29 ET |
 | **Season Start** | March 25, 2026 | — |
 <!-- BTS:RUNNING_RECORD_END -->
 
@@ -674,7 +674,8 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:DAILY_LOG_START -->
 | Date | Top Pick | Team | Confidence | Top-1 | Top-2 | Top-5 | Top-10 | Top-1 Streak |
 |------|----------|------|------------|-------|-------|-------|--------|--------------|
-| 2026-08-24 | Nico Hoerner | Chicago Cubs | 74.7% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-08-25 | Luis Arraez | Philadelphia Phillies | 73.2% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-08-24 | Sal Stewart | Cincinnati Reds | 72.6% | ✅ | ✅ | ✅ | ✅ | 1 |
 | 2026-08-23 | Willson Contreras | Boston Red Sox | 75.2% | ❌ | ✅ | ✅ | ✅ | 0 |
 | 2026-08-22 | Chase DeLauter | Cleveland Guardians | 73.0% | ❌ | ✅ | ✅ | ✅ | 0 |
 | 2026-08-21 | Yandy Díaz | Tampa Bay Rays | 72.0% | ❌ | ✅ | ✅ | ✅ | 0 |
@@ -703,7 +704,6 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 | 2026-07-29 | Luis Arraez | San Francisco Giants | 74.0% | ✅ | ✅ | ✅ | ✅ | 2 |
 | 2026-07-28 | Shohei Ohtani | Los Angeles Dodgers | 71.0% | ✅ | ✅ | ✅ | ✅ | 1 |
 | 2026-07-27 | CJ Abrams | Washington Nationals | 77.0% | ❌ | ✅ | ✅ | ✅ | 0 |
-| 2026-07-26 | Jackson Chourio | Milwaukee Brewers | 73.2% | ✅ | ✅ | ✅ | ✅ | 4 |
 <!-- BTS:DAILY_LOG_END -->
 
 ### How Results Are Logged

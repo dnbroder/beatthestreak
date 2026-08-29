@@ -659,13 +659,13 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:RUNNING_RECORD_START -->
 | Metric | Value | Updated |
 |--------|-------|---------|
-| **Top-1 Hit Rate** | 67.6% | 2026-08-29 00:51 ET |
-| **Top-2 Hit Rate** | 92.4% | 2026-08-29 00:51 ET |
-| **Top-5 Hit Rate** | 100.0% | 2026-08-29 00:51 ET |
-| **Top-10 Hit Rate** | 100.0% | 2026-08-29 00:51 ET |
-| **Current Streak (Top-1)** | 2 | 2026-08-29 00:51 ET |
-| **Longest Streak (Top-1)** | 9 | 2026-08-29 00:51 ET |
-| **Dates Predicted** | 145 | 2026-08-29 00:51 ET |
+| **Top-1 Hit Rate** | 67.8% | 2026-08-29 19:36 ET |
+| **Top-2 Hit Rate** | 92.5% | 2026-08-29 19:36 ET |
+| **Top-5 Hit Rate** | 100.0% | 2026-08-29 19:36 ET |
+| **Top-10 Hit Rate** | 100.0% | 2026-08-29 19:36 ET |
+| **Current Streak (Top-1)** | 3 | 2026-08-29 19:36 ET |
+| **Longest Streak (Top-1)** | 9 | 2026-08-29 19:36 ET |
+| **Dates Predicted** | 146 | 2026-08-29 19:36 ET |
 | **Season Start** | March 25, 2026 | — |
 <!-- BTS:RUNNING_RECORD_END -->
 
@@ -674,7 +674,8 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:DAILY_LOG_START -->
 | Date | Top Pick | Team | Confidence | Top-1 | Top-2 | Top-5 | Top-10 | Top-1 Streak |
 |------|----------|------|------------|-------|-------|-------|--------|--------------|
-| 2026-08-28 | Drake Baldwin | Atlanta Braves | 74.6% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-08-29 | Matt Olson | Atlanta Braves | 73.2% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-08-28 | Drake Baldwin | Atlanta Braves | 74.6% | ✅ | ✅ | ✅ | ✅ | 3 |
 | 2026-08-27 | Daylen Lile | Washington Nationals | 69.2% | ✅ | ✅ | ✅ | ✅ | 2 |
 | 2026-08-26 | Yordan Alvarez | Houston Astros | 78.2% | ✅ | ✅ | ✅ | ✅ | 1 |
 | 2026-08-25 | Byron Buxton | Minnesota Twins | 71.3% | ❌ | ❌ | ✅ | ✅ | 0 |
@@ -703,7 +704,6 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 | 2026-08-02 | Trea Turner | Philadelphia Phillies | 70.3% | ✅ | ✅ | ✅ | ✅ | 2 |
 | 2026-08-01 | Drake Baldwin | Atlanta Braves | 75.2% | ✅ | ✅ | ✅ | ✅ | 1 |
 | 2026-07-31 | José Ramírez | Cleveland Guardians | 72.8% | ❌ | ❌ | ✅ | ✅ | 0 |
-| 2026-07-30 | Matt Olson | Atlanta Braves | 71.6% | ❌ | ✅ | ✅ | ✅ | 0 |
 <!-- BTS:DAILY_LOG_END -->
 
 ### How Results Are Logged

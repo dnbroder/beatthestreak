@@ -659,13 +659,13 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:RUNNING_RECORD_START -->
 | Metric | Value | Updated |
 |--------|-------|---------|
-| **Top-1 Hit Rate** | 68.0% | 2026-08-30 19:38 ET |
-| **Top-2 Hit Rate** | 92.5% | 2026-08-30 19:38 ET |
-| **Top-5 Hit Rate** | 100.0% | 2026-08-30 19:38 ET |
-| **Top-10 Hit Rate** | 100.0% | 2026-08-30 19:38 ET |
-| **Current Streak (Top-1)** | 4 | 2026-08-30 19:38 ET |
-| **Longest Streak (Top-1)** | 9 | 2026-08-30 19:38 ET |
-| **Dates Predicted** | 147 | 2026-08-30 19:38 ET |
+| **Top-1 Hit Rate** | 68.2% | 2026-08-31 21:44 ET |
+| **Top-2 Hit Rate** | 92.6% | 2026-08-31 21:44 ET |
+| **Top-5 Hit Rate** | 100.0% | 2026-08-31 21:44 ET |
+| **Top-10 Hit Rate** | 100.0% | 2026-08-31 21:44 ET |
+| **Current Streak (Top-1)** | 5 | 2026-08-31 21:44 ET |
+| **Longest Streak (Top-1)** | 9 | 2026-08-31 21:44 ET |
+| **Dates Predicted** | 148 | 2026-08-31 21:44 ET |
 | **Season Start** | March 25, 2026 | — |
 <!-- BTS:RUNNING_RECORD_END -->
 
@@ -674,7 +674,8 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:DAILY_LOG_START -->
 | Date | Top Pick | Team | Confidence | Top-1 | Top-2 | Top-5 | Top-10 | Top-1 Streak |
 |------|----------|------|------------|-------|-------|-------|--------|--------------|
-| 2026-08-30 | Trea Turner | Philadelphia Phillies | 73.1% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-08-31 | Zach Neto | Los Angeles Angels | 73.4% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-08-30 | Pete Alonso | Baltimore Orioles | 72.2% | ✅ | ✅ | ✅ | ✅ | 5 |
 | 2026-08-29 | Matt Olson | Atlanta Braves | 72.8% | ✅ | ✅ | ✅ | ✅ | 4 |
 | 2026-08-28 | Drake Baldwin | Atlanta Braves | 74.6% | ✅ | ✅ | ✅ | ✅ | 3 |
 | 2026-08-27 | Daylen Lile | Washington Nationals | 69.2% | ✅ | ✅ | ✅ | ✅ | 2 |
@@ -703,7 +704,6 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 | 2026-08-04 | Trea Turner | Philadelphia Phillies | 75.9% | ✅ | ✅ | ✅ | ✅ | 4 |
 | 2026-08-03 | Jonathan Aranda | Tampa Bay Rays | 76.9% | ✅ | ✅ | ✅ | ✅ | 3 |
 | 2026-08-02 | Trea Turner | Philadelphia Phillies | 70.3% | ✅ | ✅ | ✅ | ✅ | 2 |
-| 2026-08-01 | Drake Baldwin | Atlanta Braves | 75.2% | ✅ | ✅ | ✅ | ✅ | 1 |
 <!-- BTS:DAILY_LOG_END -->
 
 ### How Results Are Logged

@@ -659,13 +659,13 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:RUNNING_RECORD_START -->
 | Metric | Value | Updated |
 |--------|-------|---------|
-| **Top-1 Hit Rate** | 68.4% | 2026-09-04 19:17 ET |
-| **Top-2 Hit Rate** | 92.1% | 2026-09-04 19:17 ET |
-| **Top-5 Hit Rate** | 100.0% | 2026-09-04 19:17 ET |
-| **Top-10 Hit Rate** | 100.0% | 2026-09-04 19:17 ET |
-| **Current Streak (Top-1)** | 0 | 2026-09-04 19:17 ET |
-| **Longest Streak (Top-1)** | 9 | 2026-09-04 19:17 ET |
-| **Dates Predicted** | 152 | 2026-09-04 19:17 ET |
+| **Top-1 Hit Rate** | 68.6% | 2026-09-05 18:46 ET |
+| **Top-2 Hit Rate** | 92.2% | 2026-09-05 18:46 ET |
+| **Top-5 Hit Rate** | 100.0% | 2026-09-05 18:46 ET |
+| **Top-10 Hit Rate** | 100.0% | 2026-09-05 18:46 ET |
+| **Current Streak (Top-1)** | 1 | 2026-09-05 18:46 ET |
+| **Longest Streak (Top-1)** | 9 | 2026-09-05 18:46 ET |
+| **Dates Predicted** | 153 | 2026-09-05 18:46 ET |
 | **Season Start** | March 25, 2026 | — |
 <!-- BTS:RUNNING_RECORD_END -->
 
@@ -674,7 +674,8 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:DAILY_LOG_START -->
 | Date | Top Pick | Team | Confidence | Top-1 | Top-2 | Top-5 | Top-10 | Top-1 Streak |
 |------|----------|------|------------|-------|-------|-------|--------|--------------|
-| 2026-09-04 | Yordan Alvarez | Houston Astros | 73.6% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-09-05 | Julio Rodríguez | Seattle Mariners | 73.2% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-09-04 | Yordan Alvarez | Houston Astros | 73.6% | ✅ | ✅ | ✅ | ✅ | 1 |
 | 2026-09-03 | Yordan Alvarez | Houston Astros | 70.4% | ❌ | ❌ | ✅ | ✅ | 0 |
 | 2026-09-02 | Julio Rodríguez | Seattle Mariners | 74.2% | ✅ | ✅ | ✅ | ✅ | 8 |
 | 2026-09-01 | Julio Rodríguez | Seattle Mariners | 81.3% | ✅ | ✅ | ✅ | ✅ | 7 |
@@ -703,7 +704,6 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 | 2026-08-09 | Luis Arraez | Philadelphia Phillies | 77.1% | ❌ | ✅ | ✅ | ✅ | 0 |
 | 2026-08-08 | Luis Arraez | Philadelphia Phillies | 79.1% | ✅ | ✅ | ✅ | ✅ | 8 |
 | 2026-08-07 | Kyle Stowers | Miami Marlins | 75.8% | ✅ | ✅ | ✅ | ✅ | 7 |
-| 2026-08-06 | Luis Arraez | Philadelphia Phillies | 75.4% | ✅ | ✅ | ✅ | ✅ | 6 |
 <!-- BTS:DAILY_LOG_END -->
 
 ### How Results Are Logged

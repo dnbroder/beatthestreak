@@ -659,13 +659,13 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:RUNNING_RECORD_START -->
 | Metric | Value | Updated |
 |--------|-------|---------|
-| **Top-1 Hit Rate** | 68.2% | 2026-09-06 18:49 ET |
-| **Top-2 Hit Rate** | 92.2% | 2026-09-06 18:49 ET |
-| **Top-5 Hit Rate** | 100.0% | 2026-09-06 18:49 ET |
-| **Top-10 Hit Rate** | 100.0% | 2026-09-06 18:49 ET |
-| **Current Streak (Top-1)** | 0 | 2026-09-06 18:49 ET |
-| **Longest Streak (Top-1)** | 9 | 2026-09-06 18:49 ET |
-| **Dates Predicted** | 154 | 2026-09-06 18:49 ET |
+| **Top-1 Hit Rate** | 68.4% | 2026-09-07 20:21 ET |
+| **Top-2 Hit Rate** | 92.3% | 2026-09-07 20:21 ET |
+| **Top-5 Hit Rate** | 100.0% | 2026-09-07 20:21 ET |
+| **Top-10 Hit Rate** | 100.0% | 2026-09-07 20:21 ET |
+| **Current Streak (Top-1)** | 1 | 2026-09-07 20:21 ET |
+| **Longest Streak (Top-1)** | 9 | 2026-09-07 20:21 ET |
+| **Dates Predicted** | 155 | 2026-09-07 20:21 ET |
 | **Season Start** | March 25, 2026 | — |
 <!-- BTS:RUNNING_RECORD_END -->
 
@@ -674,7 +674,8 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:DAILY_LOG_START -->
 | Date | Top Pick | Team | Confidence | Top-1 | Top-2 | Top-5 | Top-10 | Top-1 Streak |
 |------|----------|------|------------|-------|-------|-------|--------|--------------|
-| 2026-09-06 | Luis Arraez | Philadelphia Phillies | 73.8% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-09-07 | Mike Trout | Los Angeles Angels | 75.5% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-09-06 | Luis Arraez | Philadelphia Phillies | 73.3% | ✅ | ✅ | ✅ | ✅ | 1 |
 | 2026-09-05 | Julio Rodríguez | Seattle Mariners | 73.2% | ❌ | ✅ | ✅ | ✅ | 0 |
 | 2026-09-04 | Yordan Alvarez | Houston Astros | 73.6% | ✅ | ✅ | ✅ | ✅ | 1 |
 | 2026-09-03 | Yordan Alvarez | Houston Astros | 70.4% | ❌ | ❌ | ✅ | ✅ | 0 |
@@ -703,7 +704,6 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 | 2026-08-11 | Jeremy Peña | Houston Astros | 75.2% | ❌ | ❌ | ✅ | ✅ | 0 |
 | 2026-08-10 | Luis Arraez | Philadelphia Phillies | 72.2% | ❌ | ✅ | ✅ | ✅ | 0 |
 | 2026-08-09 | Luis Arraez | Philadelphia Phillies | 77.1% | ❌ | ✅ | ✅ | ✅ | 0 |
-| 2026-08-08 | Luis Arraez | Philadelphia Phillies | 79.1% | ✅ | ✅ | ✅ | ✅ | 8 |
 <!-- BTS:DAILY_LOG_END -->
 
 ### How Results Are Logged

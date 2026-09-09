@@ -659,13 +659,13 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:RUNNING_RECORD_START -->
 | Metric | Value | Updated |
 |--------|-------|---------|
-| **Top-1 Hit Rate** | 68.6% | 2026-09-08 19:43 ET |
-| **Top-2 Hit Rate** | 92.3% | 2026-09-08 19:43 ET |
-| **Top-5 Hit Rate** | 100.0% | 2026-09-08 19:43 ET |
-| **Top-10 Hit Rate** | 100.0% | 2026-09-08 19:43 ET |
-| **Current Streak (Top-1)** | 2 | 2026-09-08 19:43 ET |
-| **Longest Streak (Top-1)** | 9 | 2026-09-08 19:43 ET |
-| **Dates Predicted** | 156 | 2026-09-08 19:43 ET |
+| **Top-1 Hit Rate** | 68.8% | 2026-09-09 19:35 ET |
+| **Top-2 Hit Rate** | 92.4% | 2026-09-09 19:35 ET |
+| **Top-5 Hit Rate** | 100.0% | 2026-09-09 19:35 ET |
+| **Top-10 Hit Rate** | 100.0% | 2026-09-09 19:35 ET |
+| **Current Streak (Top-1)** | 3 | 2026-09-09 19:35 ET |
+| **Longest Streak (Top-1)** | 9 | 2026-09-09 19:35 ET |
+| **Dates Predicted** | 157 | 2026-09-09 19:35 ET |
 | **Season Start** | March 25, 2026 | — |
 <!-- BTS:RUNNING_RECORD_END -->
 
@@ -674,7 +674,8 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:DAILY_LOG_START -->
 | Date | Top Pick | Team | Confidence | Top-1 | Top-2 | Top-5 | Top-10 | Top-1 Streak |
 |------|----------|------|------------|-------|-------|-------|--------|--------------|
-| 2026-09-08 | Brett Bateman | Toronto Blue Jays | 77.0% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-09-09 | Cody Bellinger | New York Yankees | 72.9% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-09-08 | Yandy Díaz | Tampa Bay Rays | 76.7% | ✅ | ✅ | ✅ | ✅ | 3 |
 | 2026-09-07 | Mike Trout | Los Angeles Angels | 74.3% | ✅ | ✅ | ✅ | ✅ | 2 |
 | 2026-09-06 | Luis Arraez | Philadelphia Phillies | 73.3% | ✅ | ✅ | ✅ | ✅ | 1 |
 | 2026-09-05 | Julio Rodríguez | Seattle Mariners | 73.2% | ❌ | ✅ | ✅ | ✅ | 0 |
@@ -703,7 +704,6 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 | 2026-08-13 | Luis Arraez | Philadelphia Phillies | 73.5% | ✅ | ✅ | ✅ | ✅ | 1 |
 | 2026-08-12 | Brandon Nimmo | Texas Rangers | 76.5% | ❌ | ✅ | ✅ | ✅ | 0 |
 | 2026-08-11 | Jeremy Peña | Houston Astros | 75.2% | ❌ | ❌ | ✅ | ✅ | 0 |
-| 2026-08-10 | Luis Arraez | Philadelphia Phillies | 72.2% | ❌ | ✅ | ✅ | ✅ | 0 |
 <!-- BTS:DAILY_LOG_END -->
 
 ### How Results Are Logged

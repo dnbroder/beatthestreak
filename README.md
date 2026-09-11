@@ -659,13 +659,13 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:RUNNING_RECORD_START -->
 | Metric | Value | Updated |
 |--------|-------|---------|
-| **Top-1 Hit Rate** | 69.0% | 2026-09-10 19:27 ET |
-| **Top-2 Hit Rate** | 92.4% | 2026-09-10 19:27 ET |
-| **Top-5 Hit Rate** | 100.0% | 2026-09-10 19:27 ET |
-| **Top-10 Hit Rate** | 100.0% | 2026-09-10 19:27 ET |
-| **Current Streak (Top-1)** | 4 | 2026-09-10 19:27 ET |
-| **Longest Streak (Top-1)** | 9 | 2026-09-10 19:27 ET |
-| **Dates Predicted** | 158 | 2026-09-10 19:27 ET |
+| **Top-1 Hit Rate** | 69.2% | 2026-09-11 19:27 ET |
+| **Top-2 Hit Rate** | 92.5% | 2026-09-11 19:27 ET |
+| **Top-5 Hit Rate** | 100.0% | 2026-09-11 19:27 ET |
+| **Top-10 Hit Rate** | 100.0% | 2026-09-11 19:27 ET |
+| **Current Streak (Top-1)** | 5 | 2026-09-11 19:27 ET |
+| **Longest Streak (Top-1)** | 9 | 2026-09-11 19:27 ET |
+| **Dates Predicted** | 159 | 2026-09-11 19:27 ET |
 | **Season Start** | March 25, 2026 | — |
 <!-- BTS:RUNNING_RECORD_END -->
 
@@ -674,7 +674,8 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 <!-- BTS:DAILY_LOG_START -->
 | Date | Top Pick | Team | Confidence | Top-1 | Top-2 | Top-5 | Top-10 | Top-1 Streak |
 |------|----------|------|------------|-------|-------|-------|--------|--------------|
-| 2026-09-10 | Luis Arraez | Philadelphia Phillies | 76.2% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-09-11 | Brett Bateman | Toronto Blue Jays | 76.5% | ⏳ | ⏳ | ⏳ | ⏳ | — |
+| 2026-09-10 | Luis Arraez | Philadelphia Phillies | 75.0% | ✅ | ✅ | ✅ | ✅ | 5 |
 | 2026-09-09 | Cody Bellinger | New York Yankees | 72.9% | ✅ | ✅ | ✅ | ✅ | 4 |
 | 2026-09-08 | Yandy Díaz | Tampa Bay Rays | 76.7% | ✅ | ✅ | ✅ | ✅ | 3 |
 | 2026-09-07 | Mike Trout | Los Angeles Angels | 74.3% | ✅ | ✅ | ✅ | ✅ | 2 |
@@ -703,7 +704,6 @@ Multi-sport DK lineup optimizer wrapping `pydfs-lineup-optimizer`. Consumes the 
 | 2026-08-15 | Trea Turner | Philadelphia Phillies | 74.7% | ✅ | ✅ | ✅ | ✅ | 1 |
 | 2026-08-14 | CJ Abrams | Washington Nationals | 74.1% | ❌ | ✅ | ✅ | ✅ | 0 |
 | 2026-08-13 | Luis Arraez | Philadelphia Phillies | 73.5% | ✅ | ✅ | ✅ | ✅ | 1 |
-| 2026-08-12 | Brandon Nimmo | Texas Rangers | 76.5% | ❌ | ✅ | ✅ | ✅ | 0 |
 <!-- BTS:DAILY_LOG_END -->
 
 ### How Results Are Logged
